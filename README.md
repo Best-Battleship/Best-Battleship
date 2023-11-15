@@ -18,3 +18,10 @@ In a list format:
 - **Consensus** provided by using a virtual ring and a token to grant right to move and move validation
 - **Fault tolerance** provided by remaining players generating a new token if player holding the token fails
 
+Messages:
+- **Init_game**
+- **Join_game**
+  - response_ack(game participant id)
+- **start_game**
+    - player_ids
+    - starting_playerID
