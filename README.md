@@ -25,3 +25,8 @@ Messages:
 - **start_game**
     - player_ids
     - starting_playerID
+## How to generate markdown file to PDF in Ubuntu
+1. Install Ubuntu depencencies `sudo apt-get install pandoc texlive-latex-recommended texlive-latex-extra`
+
+
+2. Generate document `pandoc design/design_document.md -s -o  ~/test.pdf`
