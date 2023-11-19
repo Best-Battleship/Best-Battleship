@@ -3,7 +3,7 @@
 ## Team members
 - Omitted for now
 - Omitted for now
-- Omitted for now
+- Toni Raeluoto
 - Jonne Kanerva 
 
 ## Project description
