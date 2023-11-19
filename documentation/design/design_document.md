@@ -2,7 +2,7 @@
 
 ## Team members
 - Omitted for now
-- Omitted for now
+- Oleg Tervo-Ridor
 - Toni Raeluoto
 - Jonne Kanerva 
 
