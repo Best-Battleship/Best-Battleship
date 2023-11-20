@@ -19,14 +19,17 @@ In a list format:
 - **Fault tolerance** provided by remaining players generating a new token if player holding the token fails
 
 Messages:
+
 - **Init_game**
 - **Join_game**
   - response_ack(game participant id)
 - **start_game**
     - player_ids
     - starting_playerID
+
 ## How to generate markdown file to PDF in Ubuntu
+
 1. Install Ubuntu depencencies `sudo apt-get install pandoc texlive-latex-recommended texlive-latex-extra`
 
 
-2. Generate document `pandoc design/design_document.md -s -o  ~/test.pdf`
+2. Generate document `cd documentation/design/ && pandoc design_document.md -s -o  ~/test.pdf`, make sure your current directory is the root of the project before the command.

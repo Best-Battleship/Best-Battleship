@@ -1,11 +1,11 @@
 # Design Document for Best Battleship
 
 ## Team members
-- Omitted for now
+
 - Oleg Tervo-Ridor
 - Toni Raeluoto
 - Jonne Kanerva 
-
+- Guanghan Wu
 ## Project description
 
 The topic of the group project is a [Battleship game](https://en.wikipedia.org/wiki/Battleship_(game)) for any number of players. The players are arranged into a virtual ring where they always have do attack the next player in the ring. A token is used to specify the current player and is also used as the main mechanism for synchronization, consistency and consensus. The game will use the standard rules described in the Wikipedia article linked at the start of this paragraph.

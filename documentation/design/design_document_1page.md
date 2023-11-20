@@ -1,10 +1,11 @@
 # Design Document for Best Battleship
 
 ## Team members
-- Omitted for now
+
 - Oleg Tervo-Ridor
 - Toni Raeluoto
 - Jonne Kanerva 
+- Guanghan Wu
 
 ## Project description
 
@@ -69,16 +70,17 @@ For more robust descriptions, see the [communication protocol sequence diagrams]
 
 ## Appendix A Communication sequence diagrams
 
-![Game initialization](protocols/1%20-%20Start.jpg)
+![Game initialization](../protocols/1-Start.jpg)
 
-![Game cycle](protocols/2%20-%20Game%20cycle.jpg)
+![Game cycle](../protocols/2-GameCycle.jpg)
 
-![Node timeout](protocols/3%20-%20Timeout.jpg)
+![Node timeout](../protocols/3-Timeout.jpg)
 
-![Node timeout recovery](protocols/4%20-%20TimeoutNodeRecovered.jpg)
+![Node timeout recovery](../protocols/4-TimeoutNodeRecovered.jpg)
 
-![Token lost in game](protocols/5%20-%20TokenLost.jpg)
+![Token lost in game](../protocols/5-TokenLost.jpg)
 
-![Token recovered](protocols/6%20-%20TokenNodeRecovered.jpg)
+![Token recovered](../protocols/6-TokenNodeRecovered.jpg)
 
-![Player lost or left the game](protocols/7%20-%20PlayerLostOrSurrendered.jpg)
+![Player lost or left the game](../protocols/7-PlayerLostOrSurrendered.jpg)
+
