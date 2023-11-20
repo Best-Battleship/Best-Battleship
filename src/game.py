@@ -13,7 +13,7 @@ GAME_PORT = 12345  # Game communication port
 BUFFER_SIZE = 1024
 
 # Global variables for game state
-players = []  # List to store connected player information
+players = [(), ()]  # List of two tuples, each containing player ID and IP address
 current_turn = 0  # Temporary turn management before token ring
 
 # Constants
@@ -185,7 +185,6 @@ def play_game(initiator=False):
         while True:
             if current_turn == 0:  # Initiator's turn
                 print_board(enemy_board)
-                # make_move(player_board)
                 x = int(input("Enter row: "))
                 y = int(input("Enter column: "))
 
@@ -210,8 +209,6 @@ def play_game(initiator=False):
         while True:
             if is_my_turn():
                 print_board(enemy_board)
-                print_board(enemy_board)
-                # make_move(player_board)
                 x = int(input("Enter row: "))
                 y = int(input("Enter column: "))
 
@@ -233,6 +230,6 @@ def play_game(initiator=False):
 if __name__ == "__main__":
     # Start the UDP listener in a separate thread
     threading.Thread(target=udp_listener, args=(), daemon=True).start()
-    user_choice = input("Do you want to start a game? (yes/no): ").lower()
-    initiator_mode = user_choice == "yes"
+    user_choice = input("Do you want to start a game? y/n: ").lower()
+    initiator_mode = user_choice == "y"
     play_game(initiator=initiator_mode)

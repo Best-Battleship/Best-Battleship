@@ -4,12 +4,25 @@ import json
 import random
 import threading
 
-
+"""
+    message structure should be a dict object, jsonization is done in the send_udp_message function
+    msg = {"type": "JOIN_GAME", "turn": 2, "content": "board changes"}
+"""
 # Function to send UDP multicast
-def send_multicast(message):
+def send_broadcast(message):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
-    sock.sendto(message.encode(), (MULTICAST_GRP, MULTICAST_PORT))
+    sock.sendto(json.dumps(msg).encode(), (MULTICAST_GRP, MULTICAST_PORT))
+
+
+def send_multicast(message, players):
+    for ip in players[1]:
+        send_udp_message(ip, message)
+
+
+def send_udp_message(ip, message):
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        s.sendto(json.dumps(msg).encode(), (ip, port))
 
 
 # Function to listen for UDP multicast
@@ -22,22 +35,7 @@ def listen_for_multicast():
     while True:
         data, addr = sock.recvfrom(BUFFER_SIZE)
         # Handle received data
-        handle_multicast_data(data.decode(), addr)
-
-
-def send_udp_message(ip, port, message):
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-        s.sendto(message.encode(), (ip, port))
-
-
-def handle_multicast_data(data, addr):
-    message_type, message_content = json.loads(data).values()
-    print(f"Received multicast message: {data} from {addr}")
-
-    if message_type == "INIT_GAME":
-        # Join the game if it's a new game initialization message
-        # Here you could add logic to prevent joining an already started game
-        join_game_as_player(addr[0])  # addr[0] contains the IP of the initiator
+        handle_udp_message(data.decode(), addr)
 
 
 def udp_listener():
@@ -50,29 +48,17 @@ def udp_listener():
 
 # Function to handle incoming TCP connections
 def handle_udp_message(data, addr):
-    message_type, message_content = json.loads(data).values()
+    message_type, turn,message_content = json.loads(data).values()
     print(f"Received UDP message: {data} from {addr}")
 
-
-# # Modify handle_client to handle different types of messages
-# def handle_client(client_socket, addr):
-#     while True:
-#         try:
-#             data = client_socket.recv(BUFFER_SIZE).decode()
-#             if data:
-#                 message_type, message_content = json.loads(data).values()
-#                 # Add your message handling logic here
-#                 if message_type == "JOIN_GAME":
-#                     # Handle a player joining the game
-#                     # ...
-#                 elif message_type == "START_GAME":
-#                     # Handle the start of the game
-#                     # ...
-#                 # Add more conditions for other message types
-#         except ConnectionError:
-#             # Handle connection errors
-#             break
-
+    if message_type == "INIT_GAME":
+        # Join the game if it's a new game initialization message
+        # Here you could add logic to prevent joining an already started game
+        join_game_as_player(addr[0])  # addr[0] contains the IP of the initiator
+    elif message_type == "START_GAME":
+        # Start the game if it's a start game message
+        # Here you could add logic to prevent starting the game multiple times
+        
 
 def handle_init_game_organizer():
     # Send JOIN_GAME to all connected players using UDP
