@@ -60,14 +60,14 @@ class UDPClient:
         data, addr = self.sock.recvfrom(1024)
         print("received on listen:", data)
         
-    def __listen_broadcast(self,):
-        data, addr = self.sock.recvfrom(1024)
+    def __listen_broadcast(self):
+        data, addr = self.sock_B.recvfrom(1024)
         print("received on broadcasst listen:", data)
         # return to send response
         return addr
         
     def __listen_multicast(self):
-        data, addr = self.sock.recvfrom(1024)
+        data, addr = self.sock_m.recvfrom(1024)
         print("received on multicast listen:", data)
         
         return addr
