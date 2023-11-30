@@ -1,3 +1,4 @@
+import time
 from utils.board import *
 
 class Game:
@@ -10,9 +11,8 @@ class Game:
         self.players = []
         
     def create_game(self):
-        # Initialize a new game
-        print("TODO: Initialize a new game")
-        # INIT_GAME
+        self.ui.display_message("Starting a new game!")
+        self.INIT_GAME()
         
     def wait_for_a_game(self):
         # Start waiting for a game
@@ -66,3 +66,47 @@ class Game:
                 # Commit to the shot
                 print("TODO: Move to PLAY_TURN protocol")
                 # PLAY_TURN(next_player, x, y)
+                
+                
+    # ---------------- PROTOCOLS --------------------
+    
+    # INIT GAME
+    def INIT_GAME(self):
+        self.ui.display_message("Sending INIT_GAME")
+        self.messaging_service.broadcast({"message": "INIT_GAME"})
+        # Make a function out of this maybe
+        five_sec_timer = time.time() + 5
+        while time.time() < five_sec_timer:
+            message = self.messaging_service.listen_broadcast()
+            print(message)
+            if message["message"] == "JOIN_GAME":
+                player = message
+                self.messaging_service.send_to(player, {"message": "ACK_JOIN"})
+                self.players.append(player)
+                self.ui.display_message("Added a player!")
+            else:
+                # Implement handling for non-happy paths
+                pass
+            
+        # Add self to game
+        self.players.append({"ip": self.messaging_service.messaging_client.IP, "port": self.messaging_service.messaging_client.IP, "broadcast_port": self.messaging_service.messaging_client.PORTB})
+
+        self.messaging_service.send_to_many({"message": "START_GAME", "players": self.players})
+        
+        # Make a function out of this maybe
+        five_sec_timer = time.time() + 5
+        ackd_players = 0
+        while time.time() < five_sec_timer and ackd_players < len(self.players) - 1:
+            message = self.messaging_service.listen_broadcast()
+            if message["message"] == "ACK_START_GAME":
+                ackd_players += 1
+            else:
+                # Implement handling for non-happy paths
+                # Maybe ignore other messages at this point?
+                pass
+        
+        if ackd_players < len(self.players) - 1:
+            self.ui.display_message("Failed to start a game!")
+            return
+            
+        self.ui.display_message("game started by you...")

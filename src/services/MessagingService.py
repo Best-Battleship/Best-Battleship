@@ -1,29 +1,32 @@
+import json 
+
 class MessagingService:
     def __init__(self, messaging_client):
         self.messaging_client = messaging_client
         
-    def wait(self):
-        #TODO: Wait for any messages
-        #TODO: Parse JSON message
-        message = self.messaging_client.wait()
+    def listen(self):
+        message = self.messaging_client.listen()
+        message = json.load(message)
+        return message
+    
+    def listen_broadcast(self):
+        message = self.messaging_client.listen_broadcast()
+        message = json.load(message)
         return message
         
-    def send_to_network(self, message):
+    def broadcast(self, message):
+        # TODO: Error handling?
+        message = json.dumps(message)
         # TODO: Generate id for the message
-        # TODO: Create a JSON message
         self.messaging_client.broadcast(message)
         
-    def send_to(self, recipients, message):
-        # Recipients implies tuples with at least (IP, PORT)
+    def send_to(self, recipient, message):
+        # Recipients implies tuple with at least (IP, PORT)
         # TODO: Generate id for the message
-        # TODO: Create a JSON message
-        self.messaging_client.send_to(recipients, message)
+        message = json.dumps(message)
+        self.messaging_client.send_to_one(recipient, message)
         
-    def send_to_and_wait_for_responses(self, recipients, message):
-        # TODO: Timeout handling
+    def send_to_many(self, message):
         # TODO: Generate id for the message
-        # TODO: Parse JSON message
-        message_id = None
-        self.messaging_client.send_to(recipients, message)
-        responses = self.messaging_client.wait_for(message_id)
-        return responses
+        message = json.dumps(message)
+        self.messaging_client.send_to_many(message)
