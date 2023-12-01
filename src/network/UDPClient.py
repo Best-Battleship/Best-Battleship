@@ -39,7 +39,8 @@ class UDPClient:
         self.__broadcast(message)
         
     def send_to(self, recipient, message):
-        self.__send(recipient.ip, recipient.port, message)
+        (ip, port) = recipient
+        self.__send(ip, port, message)
         
     def send_to_many(self, message):
         self.__multicast(message)

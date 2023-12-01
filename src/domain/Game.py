@@ -124,9 +124,9 @@ class Game:
         print(message)
         
         if message['message'] == "INIT_GAME":
-            initiator = message.author
+            initiator = (initiator_ip, initiator_port)
             self.messaging_service.send_to(
-                (initiator.ip, initiator.port), 
+                initiator, 
                 {"message": "JOIN_GAME", "broadcast_port": self.messaging_service.messaging_client.PORTB})
                 
             (message, (author_ip, author_port)) = self.messaging_service.listen()

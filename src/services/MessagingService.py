@@ -43,7 +43,7 @@ class MessagingService:
         # Recipients implies tuple with at least (IP, PORT)
         # TODO: Generate id for the message
         message = json.dumps(message)
-        self.messaging_client.send_to_one(recipient, message)
+        self.messaging_client.send_to(recipient, message)
         
     def send_to_many(self, message):
         # TODO: Generate id for the message
