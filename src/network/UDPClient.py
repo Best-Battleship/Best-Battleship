@@ -105,7 +105,7 @@ class UDPClient:
             self.sock.settimeout(None)
             return (Status.OK, data, addr)
         except TimeoutError:
-            self.sock_m.settimeout(None) 
+            self.sock.settimeout(None) 
             HANDLE_TIMEOUT()
             return (Status.HANDELED_ERROR, "{}", (0, 0))
             
@@ -117,7 +117,7 @@ class UDPClient:
             self.sock_b.settimeout(None)
             return (Status.OK, data, addr)
         except TimeoutError:
-            self.sock_m.settimeout(None) 
+            self.sock_b.settimeout(None) 
             HANDLE_TIMEOUT()
             return (Status.HANDELED_ERROR, "{}", (0, 0))
         

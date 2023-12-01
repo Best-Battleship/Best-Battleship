@@ -137,7 +137,7 @@ class Game:
             
             if result.status == Status.OK and result.message['message'] == "ACK_JOIN":
                 self.ui.display_message("Joined the game! Waiting for START_GAME multicast...")
-                result = self.messaging_service.listen_multicast() #TODO timeout
+                result = self.messaging_service.listen_multicast(6) # should start in 5 sec
                 
                 #TODO code
                 if result.status == Status.OK:
