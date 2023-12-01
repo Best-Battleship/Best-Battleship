@@ -120,7 +120,6 @@ class UDPClient:
             self.sock_b.settimeout(None) 
             HANDLE_TIMEOUT()
             return (Status.HANDELED_ERROR, "{}", (0, 0))
-        
     def __listen_multicast(self, timeout, HANDLE_TIMEOUT):
         self.sock_m.settimeout(timeout)
         

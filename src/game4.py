@@ -23,9 +23,11 @@ while True:
         game.wait_for_a_game()
         break
     elif wants_to_init == "":
-        ui.display_message("Bye!")
         break
     else:
         ui.display_message("You did not give a proper value.")
         continue
+    
+ui.display_message("Bye!")
+
     

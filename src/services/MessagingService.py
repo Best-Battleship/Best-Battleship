@@ -9,7 +9,7 @@ class MessagingService:
     def fun():
         # just to mock timeout handling
         pass
-        
+    
     def listen(self, timeout=5.0, HANDLE_TIMEOUT=fun):
         (status, data, (ip, port)) = self.messaging_client.listen(timeout, HANDLE_TIMEOUT)
         message = json.loads(data)
