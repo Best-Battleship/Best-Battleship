@@ -1,3 +1,4 @@
+import time
 from utils.board import *
 
 class Game:
@@ -10,13 +11,13 @@ class Game:
         self.players = []
         
     def create_game(self):
-        # Initialize a new game
-        print("TODO: Initialize a new game")
-        # INIT_GAME
+        self.ui.display_message("Starting a new game!")
+        self.INIT_GAME()
         
     def wait_for_a_game(self):
         # Start waiting for a game
-        print("TODO: Initialize a new game")
+        self.ui.display_message("Waiting for a new game!")
+        self.JOIN_GAME()
         
     def generate_own_board(self):
         own_board = init_board(self.EMPTY, self.BOARD_SIZE)
@@ -66,3 +67,77 @@ class Game:
                 # Commit to the shot
                 print("TODO: Move to PLAY_TURN protocol")
                 # PLAY_TURN(next_player, x, y)
+                
+                
+    # ---------------- PROTOCOLS --------------------
+    
+    # INIT GAME
+    def INIT_GAME(self):
+        self.ui.display_message("Sending INIT_GAME")
+        self.messaging_service.broadcast({"message": "INIT_GAME"})
+        # Make a function out of this maybe
+        five_sec_timer = time.time() + 5
+        while time.time() < five_sec_timer:
+            (message, (author_ip, author_port)) = self.messaging_service.listen_broadcast()
+            print(message)
+            if author_ip != 0 and message["message"] == "JOIN_GAME":
+                player = {"ip": author_ip, "port": author_port, "broadcast_port": int(message['broadcast_port'])}
+                self.messaging_service.send_to((author_ip, author_port), {"message": "ACK_JOIN"})
+                self.players.append(player)
+                self.ui.display_message("Added a player!")
+            else:
+                # Implement handling for non-happy paths
+                pass
+                
+        if len(self.players) == 0:
+            self.ui.display_message("No one here...")
+            return
+            
+        # Add self to game
+        self.players.append({"ip": self.messaging_service.messaging_client.IP, "port": self.messaging_service.messaging_client.IP, "broadcast_port": self.messaging_service.messaging_client.PORTB})
+        
+        self.ui.display_message("Multicasting START_GAME")
+        self.messaging_service.send_to_many({"message": "START_GAME", "players": self.players})
+        
+        # Make a function out of this maybe
+        five_sec_timer = time.time() + 5
+        ackd_players = 0
+        while time.time() < five_sec_timer and ackd_players < len(self.players) - 1:
+            (message, (author_ip, author_port)) = self.messaging_service.listen_broadcast()
+            if message["message"] == "ACK_START_GAME":
+                ackd_players += 1
+            else:
+                # Implement handling for non-happy paths
+                # Maybe ignore other messages at this point?
+                pass
+        
+        if ackd_players < len(self.players) - 1:
+            self.ui.display_message("Failed to start a game!")
+            return
+            
+        self.ui.display_message("game started by you...")
+        
+    # JOIN GAME
+    def JOIN_GAME(self):
+        self.ui.display_message("Waiting for INIT_GAME broadcast...")
+        (message, (initiator_ip, initiator_port)) = self.messaging_service.listen_broadcast(None)
+        print(message)
+        
+        if message['message'] == "INIT_GAME":
+            initiator = message.author
+            self.messaging_service.send_to(
+                (initiator.ip, initiator.port), 
+                {"message": "JOIN_GAME", "broadcast_port": self.messaging_service.messaging_client.PORTB})
+                
+            (message, (author_ip, author_port)) = self.messaging_service.listen()
+            print(message)
+            
+            if message['message'] == "ACK_JOIN":
+                self.ui.display_message("Joined the game! Waiting for START_GAME broadcast...")
+                (message, (author_ip, author_port)) = self.messaging_service.listen_multicast(None) #TODO timeout
+                print(message)
+                
+                #TODO code
+        else:
+            # Implement handling for non-happy paths
+            pass
