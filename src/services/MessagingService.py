@@ -10,7 +10,7 @@ class MessagingService:
         # just to mock timeout handling
         pass
     
-    def listen(self, timeout=5.0, HANDLE_TIMEOUT=fun):
+    def listen(self, timeout=5.0, HANDLE_TIMEOUT=None):
         (status, data, (ip, port)) = self.messaging_client.listen(timeout, HANDLE_TIMEOUT)
         message = json.loads(data)
         
@@ -19,7 +19,7 @@ class MessagingService:
         
         return result
     
-    def listen_broadcast(self, timeout=5.0, HANDLE_TIMEOUT=fun):
+    def listen_broadcast(self, timeout=5.0, HANDLE_TIMEOUT=None):
         (status, data, (ip, port)) = self.messaging_client.listen_broadcast(timeout, HANDLE_TIMEOUT)
         json_dictonary = json.loads(data)
         
@@ -28,7 +28,7 @@ class MessagingService:
             
         return result
         
-    def listen_multicast(self, timeout=5.0, HANDLE_TIMEOUT=fun):
+    def listen_multicast(self, timeout=5.0, HANDLE_TIMEOUT=None):
         (status, data, (ip, port)) = self.messaging_client.listen_multicast(timeout, HANDLE_TIMEOUT)
         message = json.loads(data)
         

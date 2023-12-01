@@ -6,6 +6,7 @@ class Status(Enum):
     OK = 1
     UNHANDELED_ERROR = 2
     HANDELED_ERROR = 3
+    UNHANDELED_TIMEOUT = 4
     
 class NetworkResult:
     # constants:

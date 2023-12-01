@@ -107,9 +107,14 @@ class Game:
         five_sec_timer = time.time() + 5
         ackd_players = []
         while time.time() < five_sec_timer and len(ackd_players) < len(self.players) - 1:
-            result = self.messaging_service.listen_broadcast()
+            time_left = five_sec_timer - time.time()
+            result = self.messaging_service.listen_broadcast(time_left, self.HANDLE_TIMEOUT_DROP_NODE)
             if result.status == Status.OK and result.message["message"] == "ACK_START_GAME":
                 ackd_players.extend(filter(lambda p: p['ip'] == result.ip, self.players))
+            elif result.status == Status.UNHANDELED_TIMEOUT:
+                for p in self.players:
+                    if p not in ackd_players:
+                        self.HANDLE_TIMEOUT_DROP_NODE(p['id'])
             else:
                 # Implement handling for non-happy paths
                 # Maybe ignore other messages at this point?
@@ -140,11 +145,33 @@ class Game:
                 result = self.messaging_service.listen_multicast(6) # should start in 5 sec
                 
                 #TODO code
-                if result.status == Status.OK:
+                if result.status == Status.OK and result.message['message'] = "START_GAME":
                     (ip, port) = initiator
                     self.messaging_service.send_to(
                         (result.ip, port), 
                         {"message": "ACK_START_GAME"})
+                elif result.status == Status.OK and result.message['message'] = "TIOMEOUT":
+                    if result.message['ip'] = self.messaging_service.messaging_client.IP:
+                        message = {"message": "NAK"}
+                    else:
+                        message = {"message": "TIMEOUT", "ip": result.message['ip']}
+                        
+                    for p in self.players:
+                        if p['ip'] == result.ip:
+                            self.messaging_service.send_to((p['ip'], p['broadcast_port']), message)
+                            break
+                    
+                    result = self.messaging_service.listen_multicast(6)
+                    if result.status == Status.OK and result.message['message'] = "DROP":
+                        self.players = [p for p in self.players if p['ip'] != result.message['ip']]
+                        message = {"message": "DROP", "ip": result.message['ip']}
+                        
+                        for p in self.players:
+                        if p['ip'] == result.ip:
+                            self.messaging_service.send_to((p['ip'], p['broadcast_port']), message)
+                            break
+                            
+                        # continue the game
                 else:
                     # Implement handling for non-happy paths
                     print("Not OK", result.status.name)
@@ -157,3 +184,49 @@ class Game:
             # Implement handling for non-happy paths
             print("Not OK", result.status.name)
             pass
+
+    def HANDLE_TIMEOUT_DROP_NODE(self, player_ip):
+        
+        self.ui.display_message("Sending TIMEOUT")
+        self.messaging_service.send_to_many({"message": "TIMEOUT", "ip": player_ip})
+        
+        five_sec_timer = time.time() + 5
+        ackd_players = []
+        while time.time() < five_sec_timer and len(ackd_players) < len(self.players) - 2:
+            result = self.messaging_service.listen_broadcast()
+            if result.status == Status.OK and result.message["message"] == "TIMEOUT":
+                ackd_players.extend(filter(lambda p: p['ip'] == result.ip, self.players))
+            elif result.status == Status.OK and result.message["message"] == "NAK" and result.ip == player_ip:
+                return False
+            else:
+                # Implement handling for non-happy paths
+                print("Not OK", result.status.name)
+                pass
+                
+        if len(ackd_players) == len(self.players) - 2:                
+            self.messaging_service.broadcast({"message": "DROP", "ip": player_ip})
+            
+            five_sec_timer = time.time() + 5
+            ackd_players = []
+            while time.time() < five_sec_timer and len(ackd_players) < len(self.players) - 2:
+                result = self.messaging_service.listen_broadcast()
+                if result.status == Status.OK and result.message["message"] == "DROP":
+                    ackd_players.extend(filter(lambda p: p['ip'] == result.ip, self.players))
+                    
+                    if len(ackd_players) == len(self.players) - 2:
+                        self.players = filter(lambda p: p['ip'] != player_ip, self.players)
+                        return True
+                    else:
+                        # Implement handling for non-happy paths
+                        print("Not OK", result.status.name)
+                        pass
+                else:
+                    # Implement handling for non-happy paths
+                    print("Not OK", result.status.name)
+                    pass
+        else:
+            # Implement handling for non-happy paths
+            print("Not OK", result.status.name)
+            pass
+            
+        return False

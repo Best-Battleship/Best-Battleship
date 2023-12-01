@@ -106,6 +106,10 @@ class UDPClient:
             return (Status.OK, data, addr)
         except TimeoutError:
             self.sock.settimeout(None) 
+            
+            if HANDLE_TIMEOUT is None:                    
+                return (Status.UNHANDELED_TIMEOUT, "{}", (0, 0))
+            
             HANDLE_TIMEOUT()
             return (Status.HANDELED_ERROR, "{}", (0, 0))
             
@@ -117,9 +121,14 @@ class UDPClient:
             self.sock_b.settimeout(None)
             return (Status.OK, data, addr)
         except TimeoutError:
-            self.sock_b.settimeout(None) 
+            self.sock_b.settimeout(None)
+            
+            if HANDLE_TIMEOUT is None:                    
+                return (Status.UNHANDELED_TIMEOUT, "{}", (0, 0))
+            
             HANDLE_TIMEOUT()
             return (Status.HANDELED_ERROR, "{}", (0, 0))
+            
     def __listen_multicast(self, timeout, HANDLE_TIMEOUT):
         self.sock_m.settimeout(timeout)
         
@@ -129,5 +138,9 @@ class UDPClient:
             return (Status.OK, data, addr)
         except TimeoutError:
             self.sock_m.settimeout(None) 
+            
+            if HANDLE_TIMEOUT is None:                    
+                return (Status.UNHANDELED_TIMEOUT, "{}", (0, 0))
+            
             HANDLE_TIMEOUT()
             return (Status.HANDELED_ERROR, "{}", (0, 0))
