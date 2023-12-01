@@ -1,6 +1,8 @@
 import socket
 import struct
 
+from models.NetworkResult import Status
+
 class UDPClient:
     BROADCAST_IP = "192.168.1.255" # my home LAN with mask 255.255.255.0
     MULTICAST_GRP = "224.1.1.1" # https://en.wikipedia.org/wiki/Multicast_address
@@ -50,18 +52,18 @@ class UDPClient:
         
     def listen(self, timeout, HANDLE_TIMEOUT):
         # author is (ip, port)
-        (data, author) = self.__listen(timeout, HANDLE_TIMEOUT)
-        return (data, author)
+        (status, data, author) = self.__listen(timeout, HANDLE_TIMEOUT)
+        return (status, data, author)
         
     def listen_broadcast(self, timeout, HANDLE_TIMEOUT):
         # author is (ip, port)
-        (data, author) = self.__listen_broadcast(timeout, HANDLE_TIMEOUT)
-        return (data, author)
+        (status, data, author) = self.__listen_broadcast(timeout, HANDLE_TIMEOUT)
+        return (status, data, author)
             
     def listen_multicast(self, timeout, HANDLE_TIMEOUT):
         # author is (ip, port)
-        (data, author) = self.__listen_multicast(timeout, HANDLE_TIMEOUT)
-        return (data, author)
+        (status, data, author) = self.__listen_multicast(timeout, HANDLE_TIMEOUT)
+        return (status, data, author)
         
     ## Private methods
 
@@ -101,11 +103,11 @@ class UDPClient:
         try:
             data, addr = self.sock.recvfrom(1024)
             self.sock.settimeout(None)
-            return (data, addr)
+            return (Status.OK, data, addr)
         except TimeoutError:
             self.sock_m.settimeout(None) 
             HANDLE_TIMEOUT()
-            return ("{}", (0, 0))
+            return (Status.HANDELED_ERROR, "{}", (0, 0))
             
     def __listen_broadcast(self, timeout, HANDLE_TIMEOUT):
         self.sock_b.settimeout(timeout)
@@ -113,11 +115,11 @@ class UDPClient:
         try:
             data, addr = self.sock_b.recvfrom(1024)
             self.sock_b.settimeout(None)
-            return (data, addr)
+            return (Status.OK, data, addr)
         except TimeoutError:
             self.sock_m.settimeout(None) 
             HANDLE_TIMEOUT()
-            return ("{}", (0, 0))
+            return (Status.HANDELED_ERROR, "{}", (0, 0))
         
     def __listen_multicast(self, timeout, HANDLE_TIMEOUT):
         self.sock_m.settimeout(timeout)
@@ -125,8 +127,8 @@ class UDPClient:
         try:
             data, addr = self.sock_m.recvfrom(1024)
             self.sock_m.settimeout(None) 
-            return (data, addr)
+            return (Status.OK, data, addr)
         except TimeoutError:
             self.sock_m.settimeout(None) 
             HANDLE_TIMEOUT()
-            return ("{}", (0, 0))
+            return (Status.HANDELED_ERROR, "{}", (0, 0))

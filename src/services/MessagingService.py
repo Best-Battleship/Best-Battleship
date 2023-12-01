@@ -1,5 +1,7 @@
 import json 
 
+from models.NetworkResult import NetworkResult
+
 class MessagingService:
     def __init__(self, messaging_client):
         self.messaging_client = messaging_client
@@ -9,29 +11,31 @@ class MessagingService:
         pass
         
     def listen(self, timeout=5.0, HANDLE_TIMEOUT=fun):
-        (data, author) = self.messaging_client.listen(timeout, HANDLE_TIMEOUT)
+        (status, data, (ip, port)) = self.messaging_client.listen(timeout, HANDLE_TIMEOUT)
         message = json.loads(data)
-        message = ( message, author )
         
-        return message
+        result = NetworkResult(status, ip, port, message)
+        print("listen result:", result.status, result.ip, result.port, result.message)
+        
+        return result
     
     def listen_broadcast(self, timeout=5.0, HANDLE_TIMEOUT=fun):
-        (data, (ip, port)) = self.messaging_client.listen_broadcast(timeout, HANDLE_TIMEOUT)
+        (status, data, (ip, port)) = self.messaging_client.listen_broadcast(timeout, HANDLE_TIMEOUT)
         json_dictonary = json.loads(data)
         
-        if len(json_dictonary) > 0:
-            message = ( json_dictonary, (ip, port) )
-        else:
-        # on timeout after handling
-            message = ( json_dictonary, (ip, port) )
+        result = NetworkResult(status, ip, port, json_dictonary)            
+        print("broadcast result:", result.status, result.ip, result.port, result.message)
             
-        return message
+        return result
         
     def listen_multicast(self, timeout=5.0, HANDLE_TIMEOUT=fun):
-        (data, author) = self.messaging_client.listen_multicast(timeout, HANDLE_TIMEOUT)
+        (status, data, (ip, port)) = self.messaging_client.listen_multicast(timeout, HANDLE_TIMEOUT)
         message = json.loads(data)
-        message = ( message, author )
-        return message
+        
+        result = NetworkResult(status, ip, port, message)            
+        print("multicast result:", result.status, result.ip, result.port, result.message)
+            
+        return result
         
     def broadcast(self, message):
         # TODO: Error handling?
