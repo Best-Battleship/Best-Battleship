@@ -1,6 +1,8 @@
 import socket
 import struct
 
+from models.NetworkResult import Status
+
 class UDPClient:
     BROADCAST_IP = "192.168.1.255" # my home LAN with mask 255.255.255.0
     MULTICAST_GRP = "224.1.1.1" # https://en.wikipedia.org/wiki/Multicast_address
@@ -39,19 +41,29 @@ class UDPClient:
         self.__broadcast(message)
         
     def send_to(self, recipient, message):
-        self.__send(recipient.ip, recipient.port, message)
+        (ip, port) = recipient
+        self.__send(ip, port, message)
         
     def send_to_many(self, message):
         self.__multicast(message)
         
-    def wait_for_responses(self, id_answered_to, n):
+    def wait_for_responses(self, id_answered_to, n, timeout):
         print("TODO: wait for n answers with given id")
         
-    def listen(self):
-        self.__listen()
+    def listen(self, timeout, HANDLE_TIMEOUT):
+        # author is (ip, port)
+        (status, data, author) = self.__listen(timeout, HANDLE_TIMEOUT)
+        return (status, data, author)
         
-    def listen_broadcast(self):
-        self.__listen_broadcast()
+    def listen_broadcast(self, timeout, HANDLE_TIMEOUT):
+        # author is (ip, port)
+        (status, data, author) = self.__listen_broadcast(timeout, HANDLE_TIMEOUT)
+        return (status, data, author)
+            
+    def listen_multicast(self, timeout, HANDLE_TIMEOUT):
+        # author is (ip, port)
+        (status, data, author) = self.__listen_multicast(timeout, HANDLE_TIMEOUT)
+        return (status, data, author)
         
     ## Private methods
 
@@ -64,28 +76,58 @@ class UDPClient:
         # comment away next line on windows node 
         # self.sock_b.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         self.sock_b.sendto(m.encode('utf-8'), (self.BROADCAST_IP, self.PORTB))
+                
+        try:
+            self.sock_b.settimeout(1.0)
+            self.sock_b.recvfrom(1024) # catch own broadcast
+        except TimeoutError:
+            print("This is imposible!")
+        finally:
+            self.sock_b.settimeout(None)
         
     def __multicast(self, m):
         self.sock_m.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2) # idk, read ttl maybe
         self.sock_m.sendto(m.encode('utf-8'), (self.MULTICAST_GRP, self.PORTM))
+                
+        try:
+            self.sock_m.settimeout(1.0)
+            self.sock_m.recvfrom(1024) # catch own multicast
+        except TimeoutError:
+            print("This is imposible!")
+        finally:
+            self.sock_m.settimeout(None)
 
-    def __listen(self):
-        # TODO: Handle timeouts
-        # self.sock.settimeout(5.0)
-        data, addr = self.sock.recvfrom(1024)
-        # self.sock.settimeout(None)
-        return data
+    def __listen(self, timeout, HANDLE_TIMEOUT):
+        self.sock.settimeout(timeout)
         
-    def __listen_broadcast(self):
-        # TODO: Handle timeouts
-        self.sock_b.settimeout(5.0)
-        data, addr = self.sock_b.recvfrom(1024)
-        self.sock_b.settimeout(None)
-        return addr
+        try:
+            data, addr = self.sock.recvfrom(1024)
+            self.sock.settimeout(None)
+            return (Status.OK, data, addr)
+        except TimeoutError:
+            self.sock.settimeout(None) 
+            HANDLE_TIMEOUT()
+            return (Status.HANDELED_ERROR, "{}", (0, 0))
+            
+    def __listen_broadcast(self, timeout, HANDLE_TIMEOUT):
+        self.sock_b.settimeout(timeout)
         
-    def __listen_multicast(self):
-        # TODO: Handle timeouts
-        # self.sock_m.settimeout(5.0)
-        data, addr = self.sock_m.recvfrom(1024)        
-        # self.sock_m.settimeout(None)
-        return addr
+        try:
+            data, addr = self.sock_b.recvfrom(1024)
+            self.sock_b.settimeout(None)
+            return (Status.OK, data, addr)
+        except TimeoutError:
+            self.sock_b.settimeout(None) 
+            HANDLE_TIMEOUT()
+            return (Status.HANDELED_ERROR, "{}", (0, 0))
+    def __listen_multicast(self, timeout, HANDLE_TIMEOUT):
+        self.sock_m.settimeout(timeout)
+        
+        try:
+            data, addr = self.sock_m.recvfrom(1024)
+            self.sock_m.settimeout(None) 
+            return (Status.OK, data, addr)
+        except TimeoutError:
+            self.sock_m.settimeout(None) 
+            HANDLE_TIMEOUT()
+            return (Status.HANDELED_ERROR, "{}", (0, 0))

@@ -1,5 +1,7 @@
 import time
+
 from utils.board import *
+from models.NetworkResult import Status
 
 class Game:
     # The player's own index
@@ -16,7 +18,8 @@ class Game:
         
     def wait_for_a_game(self):
         # Start waiting for a game
-        print("TODO: Initialize a new game")
+        self.ui.display_message("Waiting for a new game!")
+        self.JOIN_GAME()
         
     def generate_own_board(self):
         own_board = init_board(self.EMPTY, self.BOARD_SIZE)
@@ -77,36 +80,80 @@ class Game:
         # Make a function out of this maybe
         five_sec_timer = time.time() + 5
         while time.time() < five_sec_timer:
-            message = self.messaging_service.listen_broadcast()
-            print(message)
-            if message["message"] == "JOIN_GAME":
-                player = message
-                self.messaging_service.send_to(player, {"message": "ACK_JOIN"})
+            result = self.messaging_service.listen_broadcast()
+            if result.status == Status.OK and result.message["message"] == "JOIN_GAME":
+                player = {"ip": result.ip, 
+                    "port": result.port, 
+                    "broadcast_port": int(result.message['broadcast_port'])}
+                self.messaging_service.send_to((result.ip, result.port), {"message": "ACK_JOIN"})
                 self.players.append(player)
                 self.ui.display_message("Added a player!")
             else:
                 # Implement handling for non-happy paths
+                print("Not OK", result.status.name)
                 pass
+                
+        if len(self.players) == 0:
+            self.ui.display_message("No one here...")
+            return
             
         # Add self to game
-        self.players.append({"ip": self.messaging_service.messaging_client.IP, "port": self.messaging_service.messaging_client.IP, "broadcast_port": self.messaging_service.messaging_client.PORTB})
-
+        self.players.append({"ip": self.messaging_service.messaging_client.IP, "port": self.messaging_service.messaging_client.PORT, "broadcast_port": self.messaging_service.messaging_client.PORTB})
+        
+        self.ui.display_message("Multicasting START_GAME")
         self.messaging_service.send_to_many({"message": "START_GAME", "players": self.players})
         
         # Make a function out of this maybe
         five_sec_timer = time.time() + 5
-        ackd_players = 0
-        while time.time() < five_sec_timer and ackd_players < len(self.players) - 1:
-            message = self.messaging_service.listen_broadcast()
-            if message["message"] == "ACK_START_GAME":
-                ackd_players += 1
+        ackd_players = []
+        while time.time() < five_sec_timer and len(ackd_players) < len(self.players) - 1:
+            result = self.messaging_service.listen_broadcast()
+            if result.status == Status.OK and result.message["message"] == "ACK_START_GAME":
+                ackd_players.extend(filter(lambda p: p['ip'] == result.ip, self.players))
             else:
                 # Implement handling for non-happy paths
                 # Maybe ignore other messages at this point?
+                print("Not OK", result.status.name)
                 pass
         
-        if ackd_players < len(self.players) - 1:
+        if len(ackd_players) < len(self.players) - 1:
             self.ui.display_message("Failed to start a game!")
             return
             
         self.ui.display_message("game started by you...")
+        
+    # JOIN GAME
+    def JOIN_GAME(self):
+        self.ui.display_message("Waiting for INIT_GAME broadcast...")
+        result = self.messaging_service.listen_broadcast(None)
+        
+        if result.status == Status.OK and result.message['message'] == "INIT_GAME":
+            initiator = (result.ip, result.port)
+            self.messaging_service.send_to(
+                initiator, 
+                {"message": "JOIN_GAME", "broadcast_port": self.messaging_service.messaging_client.PORTB})
+                
+            result = self.messaging_service.listen()
+            
+            if result.status == Status.OK and result.message['message'] == "ACK_JOIN":
+                self.ui.display_message("Joined the game! Waiting for START_GAME multicast...")
+                result = self.messaging_service.listen_multicast(6) # should start in 5 sec
+                
+                #TODO code
+                if result.status == Status.OK:
+                    (ip, port) = initiator
+                    self.messaging_service.send_to(
+                        (result.ip, port), 
+                        {"message": "ACK_START_GAME"})
+                else:
+                    # Implement handling for non-happy paths
+                    print("Not OK", result.status.name)
+                    pass
+            else:
+                # Implement handling for non-happy paths
+                print("Not OK", result.status.name)
+                pass
+        else:
+            # Implement handling for non-happy paths
+            print("Not OK", result.status.name)
+            pass
