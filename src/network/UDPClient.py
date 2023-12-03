@@ -4,7 +4,7 @@ import struct
 from models.NetworkResult import Status
 
 class UDPClient:
-    BROADCAST_IP = "128.214.11.255" # my home LAN with mask 255.255.255.0
+    BROADCAST_IP = "255.255.255.255" # absolute
     MULTICAST_GRP = "224.1.1.1" # https://en.wikipedia.org/wiki/Multicast_address
     
     def __init__(self, IP, PORT, PORTB, PORTM):
