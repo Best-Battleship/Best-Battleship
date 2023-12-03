@@ -4,7 +4,7 @@ import struct
 from models.NetworkResult import Status
 
 class UDPClient:
-    BROADCAST_IP = "192.168.1.255" # my home LAN with mask 255.255.255.0
+    BROADCAST_IP = "128.214.11.255" # my home LAN with mask 255.255.255.0
     MULTICAST_GRP = "224.1.1.1" # https://en.wikipedia.org/wiki/Multicast_address
     
     def __init__(self, IP, PORT, PORTB, PORTM):
@@ -27,10 +27,10 @@ class UDPClient:
         self.sock_m.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         
         # Windows
-        self.sock_m.bind(('', PORTM))
+        # self.sock_m.bind(('', PORTM))
         
         # Others
-        # self.sock_m.bind((self.MULTICAST_GRP, PORTM))
+        self.sock_m.bind((self.MULTICAST_GRP, PORTM))
         
         mreq = struct.pack("4sl", socket.inet_aton(self.MULTICAST_GRP), socket.INADDR_ANY)
         self.sock_m.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
@@ -69,12 +69,12 @@ class UDPClient:
 
     def __send(self, ip, port, m):
         # comment away next line on windows node 
-        # self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 0)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 0)
         self.sock.sendto(m.encode('utf-8'), (ip, port))
 
     def __broadcast(self, m):
         # comment away next line on windows node 
-        # self.sock_b.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        self.sock_b.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         self.sock_b.sendto(m.encode('utf-8'), (self.BROADCAST_IP, self.PORTB))
                 
         try:
