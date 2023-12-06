@@ -60,7 +60,7 @@ class MessagingService:
         n_sec_timer = time.time() + int(timer)
         ackd_players = [myself]
         
-        while time.time() < n_sec_timer and len(ackd_players) < len(players) - 1:
+        while time.time() < n_sec_timer and len(ackd_players) < len(players):
             time_left = n_sec_timer - time.time()
             result = self.listen_broadcast(time_left)
             

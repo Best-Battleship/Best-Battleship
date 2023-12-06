@@ -201,7 +201,7 @@ class Game:
         ackd_players = []
         
         while time.time() < five_sec_timer and len(ackd_players) < len(active_players) - 1:
-            time_left = n_sec_timer - time.time()
+            time_left = five_sec_timer - time.time()
             result = self.messaging_service.listen_broadcast(time_left)
             
             if result.status == Status.OK and result.message["message"] == "TIMEOUT":
