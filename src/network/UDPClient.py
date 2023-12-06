@@ -80,7 +80,7 @@ class UDPClient:
         try:
             self.sock_b.settimeout(1.0)
             self.sock_b.recvfrom(1024) # catch own broadcast
-        except TimeoutError:
+        except socket.timeout:
             print("This is imposible!")
         finally:
             self.sock_b.settimeout(None)
@@ -92,7 +92,7 @@ class UDPClient:
         try:
             self.sock_m.settimeout(1.0)
             self.sock_m.recvfrom(1024) # catch own multicast
-        except TimeoutError:
+        except socket.timeout:
             print("This is imposible!")
         finally:
             self.sock_m.settimeout(None)
@@ -104,7 +104,7 @@ class UDPClient:
             data, addr = self.sock.recvfrom(1024)
             self.sock.settimeout(None)
             return (Status.OK, data, addr)
-        except TimeoutError:
+        except socket.timeout:
             self.sock.settimeout(None) 
             HANDLE_TIMEOUT()
             return (Status.HANDELED_ERROR, "{}", (0, 0))
@@ -116,10 +116,11 @@ class UDPClient:
             data, addr = self.sock_b.recvfrom(1024)
             self.sock_b.settimeout(None)
             return (Status.OK, data, addr)
-        except TimeoutError:
+        except socket.timeout:
             self.sock_b.settimeout(None) 
             HANDLE_TIMEOUT()
             return (Status.HANDELED_ERROR, "{}", (0, 0))
+
     def __listen_multicast(self, timeout, HANDLE_TIMEOUT):
         self.sock_m.settimeout(timeout)
         
@@ -127,7 +128,7 @@ class UDPClient:
             data, addr = self.sock_m.recvfrom(1024)
             self.sock_m.settimeout(None) 
             return (Status.OK, data, addr)
-        except TimeoutError:
+        except socket.timeout:
             self.sock_m.settimeout(None) 
             HANDLE_TIMEOUT()
             return (Status.HANDELED_ERROR, "{}", (0, 0))
