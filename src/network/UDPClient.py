@@ -4,7 +4,7 @@ import struct
 from models.NetworkResult import Status
 
 class UDPClient:
-    BROADCAST_IP = "255.255.255.255" # my home LAN with mask 255.255.255.0
+    BROADCAST_IP = "255.255.255.255" # absolute
     MULTICAST_GRP = "224.1.1.1" # https://en.wikipedia.org/wiki/Multicast_address
     
     def __init__(self, PORT, PORTB, PORTM):
@@ -24,10 +24,10 @@ class UDPClient:
         self.sock_m.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         
         # Windows
-        self.sock_m.bind(('', PORTM))
+        # self.sock_m.bind(('', PORTM))
         
         # Others
-        # self.sock_m.bind((self.MULTICAST_GRP, PORTM))
+        self.sock_m.bind((self.MULTICAST_GRP, PORTM))
         
         mreq = struct.pack("4sl", socket.inet_aton(self.MULTICAST_GRP), socket.INADDR_ANY)
         self.sock_m.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
