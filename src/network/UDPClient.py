@@ -100,7 +100,7 @@ class UDPClient:
             
             if not self.direct_socket_initialized:
                 self.init_direct_port(ip)
-        except TimeoutError:
+        except socket.timeout:
             print("Your broadcast is configured wrong")
         finally:
             self.sock_b.settimeout(None)
@@ -112,7 +112,7 @@ class UDPClient:
         try:
             self.sock_m.settimeout(1.0)
             self.sock_m.recvfrom(1024) # catch own multicast
-        except TimeoutError:
+        except socket.timeout:
             print("Your multicast is configured wrong")
         finally:
             self.sock_m.settimeout(None)
@@ -145,7 +145,7 @@ class UDPClient:
                 self.init_direct_port(0, ip)
             
             return (Status.OK, data, addr)
-        except TimeoutError:
+        except socket.timeout:
             self.sock_b.settimeout(None)
             
             if HANDLE_TIMEOUT is None:                    

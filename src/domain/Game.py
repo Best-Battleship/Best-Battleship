@@ -8,12 +8,17 @@ from models.Player import Player
 class Game:
     # The player's own index
     own_index = -1
-    own_board = None
+
     def __init__(self, ui, messaging_service):
         self.ui = ui
         self.messaging_service = messaging_service
         self.players = []
-        
+        self.own_id = 0
+        self.own_board = None
+        self.enemy_boards = {}
+        self.token_keeper = None
+
+
     def create_game(self):
         self.ui.display_message("Starting a new game!")
         self.INIT_GAME()
@@ -24,11 +29,13 @@ class Game:
         self.JOIN_GAME()
         
     def generate_own_board(self):
-        own_board = init_board(self.EMPTY, self.BOARD_SIZE)
+        self.own_board = init_board()
+        place_all_ships(self.own_board)
         
-    def generate_board_for_player(self, player):
-        print("TODO: initialize a board for the player")
-        # player["board"] = init_board(self.EMPTY, self.BOARD_SIZE)
+    def generate_board_for_players(self):
+        for player in self.players:
+            if player.toJSON()["id"] != self.own_id:
+                self.enemy_boards[player.toJSON()["id"]] = init_board()
         
     def map_player_from_json(self, json):
         try:                 
@@ -41,7 +48,12 @@ class Game:
     def add_player(self, player):
         print("TODO: Add the player tuple (ID, IP, PORT, BOARD) to players")
         # self.players.append(player)
-        
+    
+    def set_host_as_token_holder(self):
+        for player in self.players:
+            if player.toJSON()["id"] == 0:
+                self.token_keeper = player
+
     def drop_nodes(self, to_drop, players):
         active_players = [p for p in players if p not in to_drop]
         droped_players = []
@@ -62,16 +74,29 @@ class Game:
         return self.players[(self.own_index + 1) % len(self.players)]
         
     def start_game(self):
+        self.generate_own_board();
+        self.generate_board_for_players();
+
+        # Initiator or host will start the game
+        if self.own_id != 0:
+            self.wait_for_turn()
+
         self.ui.display_message("Multicasting START_GAME")
         json_players = [p.toJSON() for p in self.players]
         command = {"message": "START_GAME", "players": json_players}
         
         if self.command_loop(command, "ACK_START_GAME", self.players):
             self.ui.display_message("game started by you...")
+            self.play_turn();
             return True
         else:
             self.ui.display_message("failed to start a game...")
             return False
+        
+    def wait_for_turn(self):
+        self.ui.display_message("Waitin my turn to play...")
+        self.listen_loop()
+
         
     def play_turn(self):
         # Check own status
@@ -81,7 +106,7 @@ class Game:
         else:
             # Get next player and their board
             next_player = self.get_next_player()
-            enemy_board = next_player["board"]
+            enemy_board = self.enemy_boards[next_player.toJSON()["id"]]
 
             # May have to try a couple of times to hit the board or unshot space
             while True:
@@ -100,8 +125,8 @@ class Game:
                     continue
 
                 # Commit to the shot
-                print("TODO: Move to PLAY_TURN protocol")
-                # PLAY_TURN(next_player, x, y)
+                self.PLAY_TURN(next_player, x, y)
+        
                 
     def listen_loop(self, token_keeper, message_to_listen):
         result = self.messaging_service.listen_multicast(6)
@@ -205,7 +230,8 @@ class Game:
             self.messaging_service.messaging_client.IP, 
             self.messaging_service.messaging_client.PORTB)
         self.players.append(self.myself)
-                
+        self.set_host_as_token_holder()
+
         if len(self.players) == 1:
             self.ui.display_message("No one here...")
             return
@@ -238,7 +264,8 @@ class Game:
                     (ip, port) = initiator
                     self.players = [self.map_player_from_json(player) for player in result.message['players'] if self.map_player_from_json(player) != None]
                     myself = [p for p in self.players if p.ip == self.messaging_service.messaging_client.IP]
-                    
+                    self.set_host_as_token_holder()
+                    self.own_id = myself[0].toJSON()["id"]
                     if len(myself) == 1:
                         self.myself = myself[0]
                         self.messaging_service.send_to(
@@ -261,6 +288,25 @@ class Game:
             # Implement handling for non-happy paths
             print("Not OK", result.status.name)
             pass
+
+    # PLAY TURN 
+    def PLAY_TURN(self,next_player, x, y):
+        self.ui.display_message("Sending for shot coordinates via multicast...")
+        shot_command = {"message": "PLAY_TURN", "x": x, "y": y}
+        token_command = {"message": "PASS_TOKEN", "id": next_player.toJSON()["id"]}
+
+        # Inform shots
+        if self.command_loop(shot_command, "ACK_PLAY_TURN", self.players):
+            if self.command_loop(token_command, "ACK_PASS_TOKEN", self.players):
+                self.messaging_service.send_to(next_player, {"message": "PASS_TOKEN_CONFIRMED"})
+            else:
+                # errors
+                pass
+        else:
+            # Errors
+            pass
+        return True
+
 
     def HANDLE_TIMEOUT_DROP_NODE(self, player, active_players):
         print("Sending TIMEOUT", player.ip)
