@@ -11,8 +11,14 @@ def init_board():
 def apply_shot(board, y, x):
     if board[y][x] == SHIP:
         board[y][x] = HIT
+        return "HIT"
     elif board[y][x] == EMPTY:
         board[y][x] = MISS
+        return "MISS"
+    
+def mark_shot(board, y, x, status):
+    board[y][x] = status
+
     
 def already_shot(board, y, x):
     return board[y][x] == HIT or board[y][x] == MISS

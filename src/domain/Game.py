@@ -19,7 +19,6 @@ class Game:
         self.token_keeper = None
         self.myself = None
 
-
     def create_game(self):
         self.ui.display_message("Starting a new game!")
         self.INIT_GAME()
@@ -38,15 +37,12 @@ class Game:
             if player.toJSON()["id"] != self.own_id:
                 self.enemy_boards[player.toJSON()["id"]] = init_board()
 
-    def check_and_mark_hits(self, board):
-        print("TODO: check whose board have been shot and mark the hit is meant." + 
-              "If shot was agains this player return whether it was a hit")
-        pass
+    def check_and_mark_hits(self, enemy_shot):
+        if enemy_shot.message["target_id"] == self.own_id:
+            apply_shot(self.own_board, enemy_shot.message["y"],enemy_shot.message["x"])
+        else:
+            apply_shot(self.enemy_boards[enemy_shot.message["target_id"]], enemy_shot.message["y"],enemy_shot.message["x"])
 
-    def check_whose_turn_is_next(self, board):
-        print("TODO: check whose turn is next from the NetworkResult")
-        pass
-        
     def map_player_from_json(self, json):
         try:                 
             number = json['id']
@@ -81,13 +77,18 @@ class Game:
         
     def get_next_player(self):
         # TODO: Add handling for removed players if using flag.
-        return self.players[(self.own_index + 1) % len(self.players)]
+        print(str(self.own_id + 1))
+        print(len(self.players))
+        print((self.own_id + 1) % len(self.players))
+        # return self.players[(self.own_id + 1) % len(self.players)]
+        return self.get_player_with_player_id((self.own_id + 1) % len(self.players))
+    
     
     def filter_players_by_id(self, removable_id):
         return [player for player in self.players if player.number != removable_id]
     
     def get_player_with_player_id(self, id):
-        return next((player for player in self.players if player.number == target_id), None)
+        return next((player for player in self.players if player.number == id), None)
 
     def start_game(self):
         self.generate_own_board();
@@ -96,7 +97,6 @@ class Game:
         # Initiator or host will start the game
         if self.own_id != 0:
             self.wait_for_turn()
-            return
 
         self.ui.display_message("Multicasting START_GAME")
         json_players = [p.toJSON() for p in self.players]
@@ -115,28 +115,33 @@ class Game:
         enemy_shooting_result = self.listen_loop(self.token_keeper, "PLAY_TURN")
         # Who gets the token next
         token_result = self.listen_loop(self.token_keeper, "PASS_TOKEN")
-        if self.check_whose_turn_is_next(token_result) == self.own_id:
-            result = self.messaging_service.listen()
+        # Set the new token owner. Is this the right place?
+        self.token_keeper = self.get_player_with_player_id(token_result.message["id"])
+        if token_result.message["id"] == self.own_id:
+            result = self.messaging_service.listen(10)
+            print("result is "+str(result.message))
             if result.message["message"] == "PASS_TOKEN_CONFIRMED":
                 self.token_keeper = self.myself
                 #mark results
-                shot_result = self.check_and_mark_hits(self.own_board, enemy_shooting_result)
-                # get receivers
-                players_to_message = self.filter_players_by_id(self.own_id)
+                shot_result = self.check_and_mark_hits(enemy_shooting_result)
                 # prepare command
                 shot_result = {"id": self.own_id, "message": "MOVE_RESULT", "result": shot_result}
-                self.command_loop(shot_result, "ACK_MOVE_RESULT", players_to_message)
-                # take the next turn
-                self.play_turn
+                self.command_loop(shot_result, "MOVE_RESULT", self.players)
+
             else:
                 # Did not get the confirmations
                 pass
+        elif token_result.message["id"] != self.own_id:
+            shot_result = self.listen_loop(self.token_keeper, "MOVE_RESULT")
+            if shot_result.message["result"] == "HIT":
+                mark_shot(self.enemy_boards[enemy_shooting_result.message["target_id"]],enemy_shooting_result.message["y"],enemy_shooting_result.message["x"], HIT)
+            elif shot_result.message["result"] == "MISS":
+                mark_shot(self.enemy_boards[enemy_shooting_result.message["target_id"]],enemy_shooting_result.message["y"],enemy_shooting_result.message["x"], MISS)
+        if self.token_keeper.number == self.own_id:
+            # take the next turn
+            self.play_turn()
         else:
-            # Whose turn is next?
-            pass
-
-        self.check_and_mark_hits(self.own_board,enemy_shooting_result)
-        self.wait_for_turn()
+            self.wait_for_turn()
 
         
     def play_turn(self):
@@ -147,6 +152,7 @@ class Game:
         else:
             # Get next player and their board
             next_player = self.get_next_player()
+            print("Next player is " + str(next_player.number))
             enemy_board = self.enemy_boards[next_player.toJSON()["id"]]
 
             # May have to try a couple of times to hit the board or unshot space
@@ -167,35 +173,35 @@ class Game:
 
                 # Commit to the shot
                 self.PLAY_TURN(next_player, x, y)
+                self.wait_for_turn()
         
                 
     def listen_loop(self, token_keeper, message_to_listen):
         result = self.messaging_service.listen_multicast(6)
         
         if result.ip == token_keeper.ip:
-            if result.Status == Status.OK:
-                if 'message' in result:
-                    if result['message'] == message_to_listen:
+            if result.status == Status.OK:
+                if 'message' in result.message:
+                    if result.message['message'] == message_to_listen:
                         for p in self.players:
                             if p.ip == result.ip:
-                                message = result['message']
+                                message = result.message
                                 
                                 if 'token' in message:
                                     del message['token']
-                                    
                                 self.messaging_service.send_to((p.ip, p.port), message)
                                 return result
                                 
-                    elif result['message'] == 'TIMEOUT':
+                    elif result.message['message'] == 'TIMEOUT':
                         self.HANDLE_RECEIVED_TIMEOUT(result)
                         return self.listen_loop(token_keeper, message_to_listen)
                         
-                    elif result['message'] == 'ELECTION':
+                    elif result.message['message'] == 'ELECTION':
                         self.HANDLE_RECEIVED_ELECTION(result)
                         return self.listen_loop(token_keeper, message_to_listen)
                         
                     else:
-                        print("unhandled result:", result['message'])
+                        print("unhandled result:", result.message['message'])
                         return False
                         
                 else:
@@ -312,7 +318,6 @@ class Game:
                         self.messaging_service.send_to(
                             (result.ip, port), 
                             {"message": "ACK_START_GAME"})
-                        self.start_game()
                     else:
                         print("You are not in player list!")
                     
@@ -334,15 +339,23 @@ class Game:
     # PLAY TURN 
     def PLAY_TURN(self,next_player, x, y):
         self.ui.display_message("Sending for shot coordinates via multicast...")
-        shot_command = {"id": self.own_id, "message": "PLAY_TURN", "x": x, "y": y}
+        shot_command = {"target_id": next_player.toJSON()["id"], "message": "PLAY_TURN", "x": x, "y": y}
         token_command = {"message": "PASS_TOKEN", "id": next_player.toJSON()["id"]}
 
         # Inform shots
-        players_to_message = self.filter_players_by_id(self.own_id)
-        print(players_to_message)
-        if self.command_loop(shot_command, "ACK_PLAY_TURN", players_to_message):
-            if self.command_loop(token_command, "ACK_PASS_TOKEN", players_to_message):
-                self.messaging_service.send_to((next_player.ip, next_player.port), {"message": "PASS_TOKEN_CONFIRMED"})
+        if self.command_loop(shot_command, "PLAY_TURN", self.players):
+            self.ui.display_message("Sending info or next token holder via multicast...")
+            result = self.command_loop(token_command, "PASS_TOKEN", self.players)
+            if result:
+                print(str(next_player.ip)+" " + str(next_player.port))
+                self.messaging_service.send_to((next_player.ip, 5005), {"message": "PASS_TOKEN_CONFIRMED"})
+                self.token_keeper = next_player
+                shot_result = self.listen_loop(self.token_keeper, "MOVE_RESULT")
+                if shot_result.message["result"] == "HIT":
+                    mark_shot(self.enemy_boards[next_player.number], y, x, HIT)
+                elif shot_result.message["result"] == "MISS":
+                    mark_shot(self.enemy_boards[next_player.number], y, x, MISS)
+
             else:
                 # errors
                 print("Did not get enough acks for PASS_TOKEN!")
