@@ -39,9 +39,9 @@ class Game:
 
     def check_and_mark_hits(self, enemy_shot):
         if enemy_shot.message["target_id"] == self.own_id:
-            apply_shot(self.own_board, enemy_shot.message["y"],enemy_shot.message["x"])
+            return apply_shot(self.own_board, enemy_shot.message["y"],enemy_shot.message["x"])
         else:
-            apply_shot(self.enemy_boards[enemy_shot.message["target_id"]], enemy_shot.message["y"],enemy_shot.message["x"])
+            return apply_shot(self.enemy_boards[enemy_shot.message["target_id"]], enemy_shot.message["y"],enemy_shot.message["x"])
 
     def map_player_from_json(self, json):
         try:                 
@@ -95,20 +95,23 @@ class Game:
         self.generate_board_for_players();
 
         # Initiator or host will start the game
-        if self.own_id != 0:
+        if self.own_id == 0:
+            self.ui.display_message("Multicasting START_GAME")
+            json_players = [p.toJSON() for p in self.players]
+            command = {"message": "START_GAME", "players": json_players}
+            
+            if self.command_loop(command, "ACK_START_GAME", self.players):
+                self.ui.display_message("game started by you...")
+                self.play_turn()
+            else:
+                self.ui.display_message("failed to start a game...")
+                return False
+            
+        while True:
             self.wait_for_turn()
+            if self.token_keeper.number == self.own_id:
+                self.play_turn()
 
-        self.ui.display_message("Multicasting START_GAME")
-        json_players = [p.toJSON() for p in self.players]
-        command = {"message": "START_GAME", "players": json_players}
-        
-        if self.command_loop(command, "ACK_START_GAME", self.players):
-            self.ui.display_message("game started by you...")
-            self.play_turn()
-            return True
-        else:
-            self.ui.display_message("failed to start a game...")
-            return False
         
     def wait_for_turn(self):
         self.ui.display_message("Waitin my turn to play...")
@@ -137,11 +140,6 @@ class Game:
                 mark_shot(self.enemy_boards[enemy_shooting_result.message["target_id"]],enemy_shooting_result.message["y"],enemy_shooting_result.message["x"], HIT)
             elif shot_result.message["result"] == "MISS":
                 mark_shot(self.enemy_boards[enemy_shooting_result.message["target_id"]],enemy_shooting_result.message["y"],enemy_shooting_result.message["x"], MISS)
-        if self.token_keeper.number == self.own_id:
-            # take the next turn
-            self.play_turn()
-        else:
-            self.wait_for_turn()
 
         
     def play_turn(self):
@@ -157,6 +155,9 @@ class Game:
 
             # May have to try a couple of times to hit the board or unshot space
             while True:
+                self.ui.display_message("OWN BOARD")
+                self.ui.render_board(self.own_board)
+                self.ui.display_message("ENEMY BOARD")
                 self.ui.render_board(enemy_board)
                 y = self.ui.request_numeric_input("Enter row: ")
                 x = self.ui.request_numeric_input("Enter column: ")
@@ -173,8 +174,7 @@ class Game:
 
                 # Commit to the shot
                 self.PLAY_TURN(next_player, x, y)
-                self.wait_for_turn()
-        
+                break        
                 
     def listen_loop(self, token_keeper, message_to_listen):
         result = self.messaging_service.listen_multicast(6)
@@ -318,6 +318,7 @@ class Game:
                         self.messaging_service.send_to(
                             (result.ip, port), 
                             {"message": "ACK_START_GAME"})
+                        self.start_game()
                     else:
                         print("You are not in player list!")
                     
