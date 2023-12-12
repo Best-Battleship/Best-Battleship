@@ -327,6 +327,7 @@ class Game:
             return True
         else:
             droped_players = self.drop_nodes(not_acked, receivers)
+            self.players = [p for p in self.players if p not in droped_players]
             receivers = [r for r in receivers if r not in droped_players]
             return self.command_loop(command, ack_message, receivers, repeated_times + 1)
     
