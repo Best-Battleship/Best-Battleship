@@ -67,7 +67,10 @@ class MessagingService:
         while time.time() < n_sec_timer and len(ackd_players) < len(players):
             time_left = n_sec_timer - time.time()
             result = self.listen_broadcast(time_left)
-            print("TO LISTEN/RECEIVED", ack_message, result.message['message'])
+            
+            if 'message' in result.message
+                print("TO LISTEN/RECEIVED", ack_message, result.message['message'])
+            
             if result.status == Status.OK and result.message["message"] == ack_message:
                 ackd_players.extend(filter(lambda p: p.ip == result.ip, players))
             elif result.status == Status.UNHANDELED_TIMEOUT:
