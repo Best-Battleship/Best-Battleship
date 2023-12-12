@@ -16,7 +16,7 @@ class MessagingService:
         message = json.loads(data)
         
         result = NetworkResult(status, ip, port, message)
-        print("GOT DIRECT MESSAGE:", result.status, result.ip, result.port, result.message)
+        # print("GOT DIRECT MESSAGE:", result.status, result.ip, result.port, result.message)
         
         return result
     
@@ -25,7 +25,7 @@ class MessagingService:
         json_dictonary = json.loads(data)
         
         result = NetworkResult(status, ip, port, json_dictonary)
-        print("GOT BRODCAST MESSAGE:", result.status, result.ip, result.port, result.message)
+        # print("GOT BRODCAST MESSAGE:", result.status, result.ip, result.port, result.message)
         
         return result
         
@@ -34,12 +34,12 @@ class MessagingService:
         message = json.loads(data)
         
         result = NetworkResult(status, ip, port, message)
-        print("GOT MULTICAST MESSAGE:", result.status, result.ip, result.port, result.message)
+        # print("GOT MULTICAST MESSAGE:", result.status, result.ip, result.port, result.message)
         
         return result
         
     def broadcast(self, message):
-        print("BRODCASTING:", message)
+        # print("BRODCASTING:", message)
         # TODO: Error handling?
         message = json.dumps(message)
         # TODO: Generate id for the message
@@ -48,14 +48,14 @@ class MessagingService:
         
     def send_to(self, recipient, message):
         (ip, port) = recipient
-        print("SENDING TO:", ip, message)
+        # print("SENDING TO:", ip, message)
         # Recipients implies tuple with at least (IP, PORT)
         # TODO: Generate id for the message
         message = json.dumps(message)
         self.messaging_client.send_to(recipient, message)
         
     def send_to_many(self, message):
-        print("MULTICASTING:", message)
+        # print("MULTICASTING:", message)
         # TODO: Generate id for the message
         message = json.dumps(message)
         self.messaging_client.send_to_many(message)
@@ -69,8 +69,8 @@ class MessagingService:
             result = self.listen_broadcast(time_left)
             
             if 'message' in result.message:
-                print("TO LISTEN/RECEIVED", ack_message, result.message['message'])
-            
+                # print("TO LISTEN/RECEIVED", ack_message, result.message['message'])
+                pass
             if result.status == Status.OK and result.message["message"] == ack_message:
                 ackd_players.extend(filter(lambda p: p.ip == result.ip, players))
             elif result.status == Status.UNHANDELED_TIMEOUT:

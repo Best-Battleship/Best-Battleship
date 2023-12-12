@@ -1,7 +1,9 @@
 class CLI:
     def display_message(self, message):
-        print(message)
-    
+        box_width = 120
+        inner_width = box_width - 4 
+        print(f"* {message.center(inner_width)} *")
+
     def request_numeric_input(self, question):
         value = None
         while True:
@@ -22,3 +24,11 @@ class CLI:
         for row in board:
             print(' '.join(row))
             print()
+
+    def print_boxed_text(self, text):
+        box_width = 120
+        inner_width = box_width - 4 
+        print('*' * box_width)
+        print(f"* {text.center(inner_width)} *")
+
+        print('*' * box_width)

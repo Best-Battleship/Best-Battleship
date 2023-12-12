@@ -24,7 +24,7 @@ messaging_client = UDPClient(PORT, PORTB, PORTM, IP)
 messaging_service = MessagingService(messaging_client)
 game = Game(ui, messaging_service)
 
-ui.display_message("Welcome to Best Battleship!")
+ui.print_boxed_text("Welcome to Best Battleship!")
 while True:
     if START_MODE != None:
         if START_MODE == "H":
