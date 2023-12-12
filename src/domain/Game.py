@@ -214,7 +214,7 @@ class Game:
                     continue
 
                 # Commit to the shot
-                self.PLAY_TURN(next_player, x, y)
+                self.PLAY_TURN(x, y)
                 break   
 
     def handle_message(self, result, message_to_listen, timer, event):
