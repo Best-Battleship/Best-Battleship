@@ -7,12 +7,15 @@ class UDPClient:
     BROADCAST_IP = "255.255.255.255" # absolute
     MULTICAST_GRP = "224.1.1.1" # https://en.wikipedia.org/wiki/Multicast_address
     
-    def __init__(self, PORT, PORTB, PORTM):
+    def __init__(self, PORT, PORTB, PORTM, IP=None):
         self.PORT = PORT
         self.PORTB = PORTB
         self.PORTM = PORTM
         ## Socket initialization
-        self.direct_socket_initialized = False
+        if IP is None:
+            self.direct_socket_initialized = False
+        else:
+            self.init_direct_port(IP)
         
         self.sock_b = socket.socket(socket.AF_INET, # Internet
             socket.SOCK_DGRAM) # UDP

@@ -1,14 +1,12 @@
 import time
 import json
+import threading
 
 from utils.board import *
 from models.NetworkResult import Status
 from models.Player import Player
 
 class Game:
-    # The player's own index
-    own_index = -1
-
     def __init__(self, ui, messaging_service):
         self.ui = ui
         self.messaging_service = messaging_service
@@ -34,8 +32,8 @@ class Game:
         
     def generate_board_for_players(self):
         for player in self.players:
-            if player.toJSON()["id"] != self.own_id:
-                self.enemy_boards[player.toJSON()["id"]] = init_board()
+            if player.number != self.own_id:
+                self.enemy_boards[player.number] = init_board()
 
     def check_and_mark_hits(self, enemy_shot):
         if enemy_shot.message["target_id"] == self.own_id:
@@ -57,7 +55,7 @@ class Game:
     
     def set_host_as_token_holder(self):
         for player in self.players:
-            if player.toJSON()["id"] == 0:
+            if player.number == 0:
                 self.token_keeper = player
 
     def drop_nodes(self, to_drop, players):
@@ -66,7 +64,7 @@ class Game:
         
         if len(active_players) == 0:
             print("Seems like you are the only one survived")
-            self.players = []
+            self.players = [self.myself]
             return
         
         for p in to_drop:
@@ -75,20 +73,41 @@ class Game:
         
         return droped_players
         
-    def get_next_player(self):
-        # TODO: Add handling for removed players if using flag.
-        print(str(self.own_id + 1))
-        print(len(self.players))
-        print((self.own_id + 1) % len(self.players))
-        # return self.players[(self.own_id + 1) % len(self.players)]
-        return self.get_player_with_player_id((self.own_id + 1) % len(self.players))
-    
+    def get_next_player_to_play(self):
+        return self.get_player_with_player_id(self.get_next_active_player_id(self.token_keeper))
+        
+    def get_next_active_player_id(self, previous_player):        
+        nums = [p.number for p in self.players]
+        nums.sort()
+        print(nums)
+        
+        for n in nums:
+            if n > previous_player.number:
+                return n
+                
+        return nums[0]
     
     def filter_players_by_id(self, removable_id):
         return [player for player in self.players if player.number != removable_id]
     
     def get_player_with_player_id(self, id):
         return next((player for player in self.players if player.number == id), None)
+        
+    def to_my_turn(self):
+        if self.token_keeper.number <= self.myself.number:
+            return self.myself.number - self.token_keeper.number
+        else:
+            return self.myself.number + len(self.players) - self.token_keeper.number
+            
+    def skip_turn(self):
+        if len(self.players) == 1:
+            #you are the only one left
+            return
+        
+        if self.token_keeper == self.myself:
+            self.play_turn()
+        else:
+            self.wait_for_turn()
 
     def start_game(self):
         self.generate_own_board();
@@ -107,7 +126,7 @@ class Game:
                 self.ui.display_message("failed to start a game...")
                 return False
             
-        while True:
+        while len(self.players) > 1:
             self.wait_for_turn()
             if self.token_keeper.number == self.own_id:
                 self.play_turn()
@@ -115,31 +134,43 @@ class Game:
         
     def wait_for_turn(self):
         self.ui.display_message("Waitin my turn to play...")
-        enemy_shooting_result = self.listen_loop(self.token_keeper, "PLAY_TURN")
-        # Who gets the token next
-        token_result = self.listen_loop(self.token_keeper, "PASS_TOKEN")
-        # Set the new token owner. Is this the right place?
-        self.token_keeper = self.get_player_with_player_id(token_result.message["id"])
-        if token_result.message["id"] == self.own_id:
-            result = self.messaging_service.listen(10)
-            print("result is "+str(result.message))
-            if result.message["message"] == "PASS_TOKEN_CONFIRMED":
-                self.token_keeper = self.myself
-                #mark results
-                shot_result = self.check_and_mark_hits(enemy_shooting_result)
-                # prepare command
-                shot_result = {"id": self.own_id, "message": "MOVE_RESULT", "result": shot_result}
-                self.command_loop(shot_result, "MOVE_RESULT", self.players)
-
+        enemy_shooting_result = self.listen_loop("PLAY_TURN", 30 + 10*self.to_my_turn())
+        
+        if enemy_shooting_result == None:
+            self.skip_turn()
+        else:    
+            # Who gets the token next
+            token_result = self.listen_loop("PASS_TOKEN")
+            
+            if token_result == None:
+                self.skip_turn()
             else:
-                # Did not get the confirmations
-                pass
-        elif token_result.message["id"] != self.own_id:
-            shot_result = self.listen_loop(self.token_keeper, "MOVE_RESULT")
-            if shot_result.message["result"] == "HIT":
-                mark_shot(self.enemy_boards[enemy_shooting_result.message["target_id"]],enemy_shooting_result.message["y"],enemy_shooting_result.message["x"], HIT)
-            elif shot_result.message["result"] == "MISS":
-                mark_shot(self.enemy_boards[enemy_shooting_result.message["target_id"]],enemy_shooting_result.message["y"],enemy_shooting_result.message["x"], MISS)
+                # Set the new token owner. Is this the right place? very good question...
+                self.token_keeper = self.get_player_with_player_id(token_result.message["id"])
+                if token_result.message["id"] == self.own_id:
+                    result = self.messaging_service.listen(10)
+                    print("result is "+str(result.message))
+                    if result.message["message"] == "PASS_TOKEN_CONFIRMED":
+                        self.token_keeper = self.myself
+                        #mark results
+                        shot_result = self.check_and_mark_hits(enemy_shooting_result)
+                        # prepare command
+                        shot_result = {"id": self.own_id, "message": "MOVE_RESULT", "result": shot_result}
+                        self.command_loop(shot_result, "MOVE_RESULT", self.players)
+
+                    else:
+                        # Did not get the confirmations
+                        pass
+                elif token_result.message["id"] != self.own_id:
+                    shot_result = self.listen_loop("MOVE_RESULT")
+                    
+                    if shot_result == None:
+                        self.skip_turn()
+                    else:    
+                        if shot_result.message["result"] == "HIT":
+                            mark_shot(self.enemy_boards[enemy_shooting_result.message["target_id"]],enemy_shooting_result.message["y"],enemy_shooting_result.message["x"], HIT)
+                        elif shot_result.message["result"] == "MISS":
+                            mark_shot(self.enemy_boards[enemy_shooting_result.message["target_id"]],enemy_shooting_result.message["y"],enemy_shooting_result.message["x"], MISS)
 
         
     def play_turn(self):
@@ -149,18 +180,27 @@ class Game:
             pass
         else:
             # Get next player and their board
-            next_player = self.get_next_player()
+            next_player = self.get_next_player_to_play()
             print("Next player is " + str(next_player.number))
-            enemy_board = self.enemy_boards[next_player.toJSON()["id"]]
+            enemy_board = self.enemy_boards[next_player.number]
 
             # May have to try a couple of times to hit the board or unshot space
             while True:
+                # Start the UDP listener in a separate thread to handle timeouts while waiting for input
+                event = threading.Event()
+                listen_process = threading.Thread(target=self.listen_loop, args=("", 7, event), daemon=True)
+                listen_process.start()
+                
                 self.ui.display_message("OWN BOARD")
                 self.ui.render_board(self.own_board)
                 self.ui.display_message("ENEMY BOARD")
                 self.ui.render_board(enemy_board)
                 y = self.ui.request_numeric_input("Enter row: ")
                 x = self.ui.request_numeric_input("Enter column: ")
+                
+                # set the stop event and wait for a thread to end
+                event.set()
+                listen_process.join()
 
                 # Can't shoot off the board
                 if not can_shoot(y, x):
@@ -174,13 +214,17 @@ class Game:
 
                 # Commit to the shot
                 self.PLAY_TURN(next_player, x, y)
-                break        
-                
-    def listen_loop(self, token_keeper, message_to_listen):
-        result = self.messaging_service.listen_multicast(6)
+                break   
+
+    def handle_message(self, result, message_to_listen, timer, event):
+        print("handle_message...", result.message)
         
-        if result.ip == token_keeper.ip:
-            if result.status == Status.OK:
+        # stop a thread with event
+        if not event is None and event.is_set():
+            return None
+        
+        if result.status == Status.OK:
+            if result.ip in [p.ip for p in self.players]:
                 if 'message' in result.message:
                     if result.message['message'] == message_to_listen:
                         for p in self.players:
@@ -193,32 +237,62 @@ class Game:
                                 return result
                                 
                     elif result.message['message'] == 'TIMEOUT':
-                        self.HANDLE_RECEIVED_TIMEOUT(result)
-                        return self.listen_loop(token_keeper, message_to_listen)
+                        result = self.HANDLE_RECEIVED_TIMEOUT(result)
+                        
+                        if result is None:
+                            return self.listen_loop(message_to_listen, timer, event)
+                        else: 
+                            return self.handle_message(result, message_to_listen, timer, event)
                         
                     elif result.message['message'] == 'ELECTION':
-                        self.HANDLE_RECEIVED_ELECTION(result)
-                        return self.listen_loop(token_keeper, message_to_listen)
+                        result = self.HANDLE_RECEIVED_ELECTION(result, timer)
+                        
+                        if result is None:
+                            return self.listen_loop(message_to_listen, timer, event)
+                        elif result == True:
+                            return None
+                        else: 
+                            return self.handle_message(result, message_to_listen, timer, event)
+                            
+                    elif 'repeated' in result.message and result.message['repeated'] == 1:
+                        # hope you've heard it already and listening for the next one
+                        return self.listen_loop(message_to_listen, timer, event)
                         
                     else:
                         print("unhandled result:", result.message['message'])
-                        return False
+                        return result
                         
                 else:
                     print("received result without a message")
-                    return False
-                    
-            elif result.status == Status.UNHANDELED_TIMEOUT:
-                self.HANDLE_TIMEOUT_TOKEN_LOST(token_keeper, result)
-                return self.listen_loop(token_keeper, message_to_listen)
-                
+                    return result
+            
             else:
-                print("got unhandled error status in listen loop")
-                return False
+                print("received multicast from wrong ip:", result.ip)
+                return self.listen_loop(message_to_listen, timer, event)
                 
+        elif result.status == Status.UNHANDELED_TIMEOUT:
+            if(self.myself != self.token_keeper):
+                result = self.HANDLE_TIMEOUT_TOKEN_LOST()
+                
+                if result == True:
+                    return None
+                else:
+                    return self.listen_loop(message_to_listen, timer, event)
+            else:
+                return self.listen_loop(message_to_listen, timer, event)
+            
         else:
-            print("received multicast from wrong ip:", result.ip)
-            return self.listen_loop(token_keeper, message_to_listen)
+            print("got unhandled error status in listen loop")
+            return result
+                
+    def listen_loop(self, message_to_listen, timer=6, event=None):
+        
+        # stop a thread with event
+        if not event is None and event.is_set():
+            return None
+    
+        print("listen_loop...", message_to_listen)
+        return self.handle_message(self.messaging_service.listen_multicast(timer), message_to_listen, timer, event)
         
     def command_loop(self, command, ack_message, receivers, repeated_times = 0):
 
@@ -233,7 +307,7 @@ class Game:
             return False
             
         if repeated_times > 0:
-            command['repeated'] = 1 # works or not?
+            command['repeated'] = 1
         
         self.messaging_service.send_to_many(command)
         not_acked = self.messaging_service.collect_acks(receivers, self.myself, ack_message)
@@ -309,7 +383,7 @@ class Game:
                 
                 if result.status == Status.OK and result.message['message'] == "START_GAME":
                     (ip, port) = initiator
-                    self.players = [self.map_player_from_json(player) for player in result.message['players'] if self.map_player_from_json(player) != None]
+                    self.players = [self.map_player_from_json(player) for player in result.message['players'] if not self.map_player_from_json(player) is None]
                     myself = [p for p in self.players if p.ip == self.messaging_service.messaging_client.IP]
                     self.set_host_as_token_holder()
                     self.own_id = myself[0].toJSON()["id"]
@@ -351,11 +425,15 @@ class Game:
                 print(str(next_player.ip)+" " + str(next_player.port))
                 self.messaging_service.send_to((next_player.ip, 5005), {"message": "PASS_TOKEN_CONFIRMED"})
                 self.token_keeper = next_player
-                shot_result = self.listen_loop(self.token_keeper, "MOVE_RESULT")
-                if shot_result.message["result"] == "HIT":
-                    mark_shot(self.enemy_boards[next_player.number], y, x, HIT)
-                elif shot_result.message["result"] == "MISS":
-                    mark_shot(self.enemy_boards[next_player.number], y, x, MISS)
+                shot_result = self.listen_loop("MOVE_RESULT")
+                
+                if shot_result == False:
+                    self.skip_turn()
+                else:
+                    if shot_result.message["result"] == "HIT":
+                        mark_shot(self.enemy_boards[next_player.number], y, x, HIT)
+                    elif shot_result.message["result"] == "MISS":
+                        mark_shot(self.enemy_boards[next_player.number], y, x, MISS)
 
             else:
                 # errors
@@ -378,9 +456,9 @@ class Game:
         self.messaging_service.send_to_many({"message": "TIMEOUT", "ip": player.ip})
         
         five_sec_timer = time.time() + 5
-        ackd_players = []
+        ackd_players = [self.myself]
         
-        while time.time() < five_sec_timer and len(ackd_players) < len(active_players) - 1:
+        while time.time() < five_sec_timer and len(ackd_players) < len(active_players):
             time_left = five_sec_timer - time.time()
             result = self.messaging_service.listen_broadcast(time_left)
             
@@ -391,7 +469,7 @@ class Game:
             else:
                 pass
                 
-        if len(ackd_players) == len(active_players) - 1:
+        if len(ackd_players) == len(active_players):
             command = {"message": "DROP", "ip": player.ip}
             
             if self.command_loop(command, "DROP", ackd_players):
@@ -416,14 +494,9 @@ class Game:
             message = {"message": "NAK"}
         else:
             message = {"message": "TIMEOUT", "ip": result.message['ip']}
-                        
-        for p in self.players:
-            if p.ip == result.ip:
-                token_keeper = p
-                break
-        
-        self.messaging_service.send_to((token_keeper.ip, token_keeper.port), message)
-        result = self.listen_loop(token_keeper, "DROP")
+            
+        self.messaging_service.send_to((self.token_keeper.ip, self.token_keeper.port), message)
+        result = self.listen_loop("DROP")
         
         if result.status == Status.OK and result.message['message'] == "DROP":
             self.players = [p for p in self.players if p.ip != result.message['ip']]
@@ -431,34 +504,48 @@ class Game:
         self.ui.display_message("TIMEOUT handled")
         # continue the game
         
-    def HANDLE_TIMEOUT_TOKEN_LOST(self, token_keeper):
+    def HANDLE_TIMEOUT_TOKEN_LOST(self):
         self.ui.display_message("Sending ELECTION")
         
         # not a command_loop because of NAK handling
         self.messaging_service.send_to_many({"message": "ELECTION"})
         
         five_sec_timer = time.time() + 5
-        ackd_players = []
+        ackd_players = [self.myself]
         
-        while time.time() < five_sec_timer and len(ackd_players) < len(self.players) - 2:
+        while time.time() < five_sec_timer and len(ackd_players) < len(self.players):
             time_left = five_sec_timer - time.time()
             result = self.messaging_service.listen_broadcast(time_left)
             
-            if result.status == Status.OK and result.message["message"] == "ELECTION":
-                ackd_players.extend(filter(lambda p: p.ip == result.ip, active_players))
-            elif result.status == Status.OK and result.message["message"] == "NAK" and result.ip == token_keeper.ip:
+            if result.status == Status.OK and result.message["message"] == "ACK_ELECTION":
+                ackd_players.extend(filter(lambda p: p.ip == result.ip, self.players))
+            elif result.status == Status.OK and result.message["message"] == "NAK" and result.ip == self.token_keeper.ip:
                 return False
             else:
                 pass
                 
-        if len(ackd_players) == len(self.players) - 2:
-            command = {"message": "DROP", "ip": token_keeper.ip}
+        if len(ackd_players) == 1:
+            # you are the only one left
+            self.players = ackd_players
+            return True
+                
+        if len(ackd_players) == len(self.players) - 1:
+            command = {"message": "DROP", "ip": self.token_keeper.ip}
             
             if self.command_loop(command, "DROP", ackd_players):
-                self.players = [p for p in self.players if p != token_keeper]
+                self.players = [p for p in self.players if p != self.token_keeper]
+                next_player = self.get_next_player_to_play()
+                message = {"message": "PASS_TOKEN", "id": next_player.number}
                 
-                # TODO: pass token to the next
-                return True
+                if self.command_loop(message, "PASS_TOKEN", self.players):
+                    if next_player != self.myself:
+                        self.messaging_service.send_to((next_player.ip, 5005), {"message": "PASS_TOKEN_CONFIRMED"})
+                    self.token_keeper = next_player
+                    return True
+                else:
+                    # Implement handling for non-happy paths
+                    print("Not everybody ACKed on PASS_TOKEN")
+                    pass
             else:
                 # Implement handling for non-happy paths
                 print("Not everybody ACKed on DROP")
@@ -470,26 +557,35 @@ class Game:
             
         return False
         
-    def HANDLE_RECEIVED_ELECTION(self, token_keeper, result):
+    def HANDLE_RECEIVED_ELECTION(self, result, timer=6):
         
         self.ui.display_message("Received ELECTION")
         
-        if token_keeper.ip == self.messaging_service.messaging_client.IP:
-            message = {"message": "NAK"}
-        else:
-            message = {"message": "ACK_ELECTION"}
-                        
         for p in self.players:
             if p.ip == result.ip:
-                token_keeper = p
+                sender = p
                 break
-                    
-        self.messaging_service.send_to((token_keeper.ip, token_keeper.port), message)
-        result = self.listen_loop(token_keeper, "DROP")
+                
+        if self.token_keeper == self.myself:
+            message = {"message": "NAK"}
+            self.messaging_service.send_to((sender.ip, sender.port), message)
+            return None
+        
+        message = {"message": "ACK_ELECTION"}
+        self.messaging_service.send_to((sender.ip, sender.port), message)
+        result = self.listen_loop("DROP", timer)
         
         if result.status == Status.OK and result.message['message'] == "DROP":
             self.players = [p for p in self.players if p.ip != result.message['ip']]
+        else: 
+            return result
         
         # TODO: change token owner
-        self.ui.display_message("ELECTION handled")
-        # continue the game
+        result = self.listen_loop("PASS_TOKEN")
+        
+        if result.status == Status.OK and result.message['message'] == "PASS_TOKEN":
+            next_to_play = self.get_player_with_player_id(int(result.message['id']))
+            self.token_keeper = next_to_play
+            return True
+        
+        return None
