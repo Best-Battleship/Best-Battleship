@@ -256,6 +256,15 @@ class Game:
                             
                     elif 'repeated' in result.message and result.message['repeated'] == 1:
                         # hope you've heard it already and listening for the next one
+                        for p in self.players:
+                            if p.ip == result.ip:
+                                message = result.message
+                                
+                                if 'token' in message:
+                                    del message['token']
+                                self.messaging_service.send_to((p.ip, p.port), message)
+                                break
+                                
                         return self.listen_loop(message_to_listen, timer, event)
                         
                     else:
@@ -487,9 +496,7 @@ class Game:
         return False
      
     def HANDLE_RECEIVED_TIMEOUT(self, result):
-        
-        self.ui.display_message("Received TIMEOUT")
-        
+    
         if result.message['ip'] == self.messaging_service.messaging_client.IP:
             message = {"message": "NAK"}
         else:
@@ -500,8 +507,10 @@ class Game:
         
         if result.status == Status.OK and result.message['message'] == "DROP":
             self.players = [p for p in self.players if p.ip != result.message['ip']]
+        else: 
+            return result
         
-        self.ui.display_message("TIMEOUT handled")
+        return None
         # continue the game
         
     def HANDLE_TIMEOUT_TOKEN_LOST(self):
@@ -558,8 +567,6 @@ class Game:
         return False
         
     def HANDLE_RECEIVED_ELECTION(self, result, timer=6):
-        
-        self.ui.display_message("Received ELECTION")
         
         for p in self.players:
             if p.ip == result.ip:
