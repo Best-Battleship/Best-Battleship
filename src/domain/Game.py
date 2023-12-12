@@ -62,10 +62,10 @@ class Game:
         active_players = [p for p in players if p not in to_drop]
         droped_players = []
         
-        if len(active_players) == 0:
+        if len(active_players) == 1:
             print("Seems like you are the only one survived")
             self.players = [self.myself]
-            return
+            return to_drop
         
         for p in to_drop:
             if self.HANDLE_TIMEOUT_DROP_NODE(p, active_players):
@@ -79,7 +79,6 @@ class Game:
     def get_next_active_player_id(self, previous_player):        
         nums = [p.number for p in self.players]
         nums.sort()
-        print(nums)
         
         for n in nums:
             if n > previous_player.number:
@@ -178,6 +177,9 @@ class Game:
         if all_ships_shot(self.own_board):
             print("TODO: start LOST protocol")
             pass
+        elif len(self.players) == 1:
+            #you are the only one left
+            return
         else:
             # Get next player and their board
             next_player = self.get_next_player_to_play()
@@ -305,7 +307,7 @@ class Game:
         
     def command_loop(self, command, ack_message, receivers, repeated_times = 0):
 
-        if len(receivers) == 0:
+        if len(receivers) == 1:
             return True # everybody is dropped in receivers list
             
         if repeated_times > 3:
@@ -428,10 +430,20 @@ class Game:
 
         # Inform shots
         if self.command_loop(shot_command, "PLAY_TURN", self.players):
+        
+            if len(self.players) == 1:
+                #you are the only one left
+                return
+                
             self.ui.display_message("Sending info or next token holder via multicast...")
             result = self.command_loop(token_command, "PASS_TOKEN", self.players)
+            
             if result:
-                print(str(next_player.ip)+" " + str(next_player.port))
+                if len(self.players) == 1:
+                    #you are the only one left
+                    return
+            
+                # TODO: get direct port
                 self.messaging_service.send_to((next_player.ip, 5005), {"message": "PASS_TOKEN_CONFIRMED"})
                 self.token_keeper = next_player
                 shot_result = self.listen_loop("MOVE_RESULT")
@@ -451,7 +463,6 @@ class Game:
         else:
             # Errors
             print("Did not get enough acks for PLAY_TURN!")
-        return True
 
 
     def HANDLE_TIMEOUT_DROP_NODE(self, player, active_players):
@@ -485,6 +496,9 @@ class Game:
                 self.players = [p for p in self.players if p != player]
                 return True
             else:
+                if len(self.players) == 1:
+                    #you are the only one left
+                    return True
                 # Implement handling for non-happy paths
                 print("Not everybody ACKed on DROP")
                 pass
@@ -542,12 +556,17 @@ class Game:
             command = {"message": "DROP", "ip": self.token_keeper.ip}
             
             if self.command_loop(command, "DROP", ackd_players):
+            
+                if len(self.players) == 1:
+                    #you are the only one left
+                    return True
+                    
                 self.players = [p for p in self.players if p != self.token_keeper]
                 next_player = self.get_next_player_to_play()
                 message = {"message": "PASS_TOKEN", "id": next_player.number}
                 
                 if self.command_loop(message, "PASS_TOKEN", self.players):
-                    if next_player != self.myself:
+                    if next_player != self.myself and len(self.players) != 1:
                         self.messaging_service.send_to((next_player.ip, 5005), {"message": "PASS_TOKEN_CONFIRMED"})
                     self.token_keeper = next_player
                     return True
