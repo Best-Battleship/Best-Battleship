@@ -220,10 +220,6 @@ class Game:
     def handle_message(self, result, message_to_listen, timer, event):
         print("handle_message...", result.message)
         
-        # stop a thread with event
-        if not event is None and event.is_set():
-            return None
-        
         if result.status == Status.OK:
             if result.ip in [p.ip for p in self.players]:
                 if 'message' in result.message:
