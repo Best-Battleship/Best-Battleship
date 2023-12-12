@@ -427,7 +427,6 @@ class Game:
     def PLAY_TURN(self,next_player, x, y):
         self.ui.display_message("Sending for shot coordinates via multicast...")
         shot_command = {"target_id": next_player.toJSON()["id"], "message": "PLAY_TURN", "x": x, "y": y}
-        token_command = {"message": "PASS_TOKEN", "id": next_player.toJSON()["id"]}
 
         # Inform shots
         if self.command_loop(shot_command, "PLAY_TURN", self.players):
@@ -437,6 +436,7 @@ class Game:
                 return
                 
             self.ui.display_message("Sending info or next token holder via multicast...")
+            token_command = {"message": "PASS_TOKEN", "id": next_player.toJSON()["id"]}
             result = self.command_loop(token_command, "PASS_TOKEN", self.players)
             
             if result:
