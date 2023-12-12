@@ -183,7 +183,6 @@ class Game:
         else:
             # Get next player and their board
             next_player = self.get_next_player_to_play()
-            print("Next player is " + str(next_player.number))
             enemy_board = self.enemy_boards[next_player.number]
 
             # May have to try a couple of times to hit the board or unshot space
@@ -424,9 +423,10 @@ class Game:
             pass
 
     # PLAY TURN 
-    def PLAY_TURN(self,next_player, x, y):
+    def PLAY_TURN(self, x, y):
         self.ui.display_message("Sending for shot coordinates via multicast...")
-        shot_command = {"target_id": next_player.toJSON()["id"], "message": "PLAY_TURN", "x": x, "y": y}
+        next_player = self.get_next_player_to_play()
+        shot_command = {"target_id": next_player.number, "message": "PLAY_TURN", "x": x, "y": y}
 
         # Inform shots
         if self.command_loop(shot_command, "PLAY_TURN", self.players):
@@ -436,7 +436,8 @@ class Game:
                 return
                 
             self.ui.display_message("Sending info or next token holder via multicast...")
-            token_command = {"message": "PASS_TOKEN", "id": next_player.toJSON()["id"]}
+            next_player = self.get_next_player_to_play()
+            token_command = {"message": "PASS_TOKEN", "id": next_player.number}
             result = self.command_loop(token_command, "PASS_TOKEN", self.players)
             
             if result:
