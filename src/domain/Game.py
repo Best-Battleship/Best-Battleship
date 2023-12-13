@@ -631,9 +631,8 @@ class Game:
         return None
         
     def LOST_GAME(self):
-        # Broadcast 'LOST' message
-        self.ui.display_message("Broadcasting 'LOST' message...")
-        self.messaging_service.broadcast({"message": "LOST"})
+        self.ui.display_message("Multicasting 'LOST' message...")
+        self.messaging_service.send_to_many({"message": "LOST"})
 
         # Start timeout timer
         end_time = time.time() + 5  # 5-second timeout
@@ -644,16 +643,9 @@ class Game:
             if result.status == Status.OK and result.message["message"] == "ACK_LOST":
                 # Check if the player is in the game and hasn't already acknowledged
                 if result.ip not in ack_players and any(
-                    p["ip"] == result.ip for p in self.players
+                    p.ip == result.ip for p in self.players
                 ):
                     ack_players.append(result.ip)
-                    self.ui.display_message(
-                        f"Received 'ACK_LOST' from player {result.ip}"
-                    )
-            else:
-                # Implement handling for non-happy paths, similarly?
-                print("Not OK", result.status.name)
-                pass
 
         # Check if all players have acknowledged
         if len(ack_players) == len(self.players) - 1:  # Exclude self
