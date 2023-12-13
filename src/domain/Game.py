@@ -178,7 +178,7 @@ class Game:
         self.ui.print_boxed_text("START TURN")
         # Check own status
         if all_ships_shot(self.own_board):
-            print("TODO: start LOST protocol")
+            self.LOST_GAME()
             pass
         elif len(self.players) == 1:
             #you are the only one left
@@ -253,6 +253,17 @@ class Game:
                             return None
                         else: 
                             return self.handle_message(result, message_to_listen, timer, event)
+                            
+                    elif result.message['message'] == 'LOST':
+                        message = {"message": "ACK_LOST"}
+                        
+                        for p in self.players:
+                            if p.ip == result.ip:
+                                sender = p
+                                break
+                        
+                        self.messaging_service.send_to((sender.ip, sender.port), message)
+                        return self.listen_loop('', timer, event) # pass token with election
                             
                     elif 'repeated' in result.message and result.message['repeated'] == 1:
                         # hope you've heard it already and listening for the next one
@@ -618,3 +629,38 @@ class Game:
             return True
         
         return None
+        
+    def LOST_GAME(self):
+        # Broadcast 'LOST' message
+        self.ui.display_message("Broadcasting 'LOST' message...")
+        self.messaging_service.broadcast({"message": "LOST"})
+
+        # Start timeout timer
+        end_time = time.time() + 5  # 5-second timeout
+        ack_players = []
+
+        while time.time() < end_time:
+            result = self.messaging_service.listen_broadcast()
+            if result.status == Status.OK and result.message["message"] == "ACK_LOST":
+                # Check if the player is in the game and hasn't already acknowledged
+                if result.ip not in ack_players and any(
+                    p["ip"] == result.ip for p in self.players
+                ):
+                    ack_players.append(result.ip)
+                    self.ui.display_message(
+                        f"Received 'ACK_LOST' from player {result.ip}"
+                    )
+            else:
+                # Implement handling for non-happy paths, similarly?
+                print("Not OK", result.status.name)
+                pass
+
+        # Check if all players have acknowledged
+        if len(ack_players) == len(self.players) - 1:  # Exclude self
+            self.ui.display_message("All players acknowledged the lost game.")
+        else:
+            self.ui.display_message(
+                "Failed to receive acknowledgment from all players."
+            )
+        
+        self.players = []
