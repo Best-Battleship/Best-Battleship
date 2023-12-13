@@ -15,7 +15,7 @@
 
 **PROMPT:** *"The project’s goal(s) and core functionality. Identifying the applications / services that can build on your project."*
 
-The topic of the group project is a [Battleship game](https://en.wikipedia.org/wiki/Battleship_(game)) for any number of players. The players are arranged into a virtual ring where they always have do attack the next player in the ring. A token is used to specify the current player and is also used as the main mechanism for synchronization, consistency and consensus. The game will use the standard rules described in the Wikipedia article linked at the start of this paragraph.
+The topic of the group project is a [Battleship game](https://en.wikipedia.org/wiki/Battleship_(game)) for any number of players. The players are arranged into a virtual ring where they always have do attack the next player in the ring. A token is used to specify the current player and is also used as the main mechanism for synchronization, consistency and consensus. The game uses the standard rules described in the Wikipedia article linked at the start of this paragraph.
 
 The game is built as a Python program that can be run on multiple nodes that then communicate via sockets. Node discovery is done by one of the nodes by broadcasting a INIT_GAME message, which is the replied to by nodes (JOIN_GAME) that want to join that particular game. After a certain amount of time, the initiating node starts the game (START_GAME) and sends the relevant data (token, tuples (id, ip, port)) to all the participating nodes. After that the nodes start playing the game by following the protocols described in the appendix. Token holder is always known and both the token and the move are validated by all nodes, which provides synchronization and consensus to the system.
 
@@ -25,30 +25,30 @@ The idea of having a virtual ring and a token could be used to implement any tur
 
 **PROMPT:** *"The design principles (architecture, process, communication) techniques."*
 
-The main design principle is that we wanted every node to be identical in terms of functionality. Each node can initiate a game and each node can join a game. The initiating node serves a special purpose only when initiating the game, after which it is "demoted" to an identical state with all the participating nodes. All mutations require consensus, which is provided all nodes acknowledging that the node triggering a mutation (i.e. playing a turn in the battleship game) holds a valid token, has a turn and is trying to do a valid turn. Passing the token also requires acknowledgement from all participants.
+The main design principle is that we wanted every node to be identical in terms of functionality, which lead us to a peer-to-peer architecture. Each node can initiate a game and each node can join a game. The initiating node serves a special purpose only when initiating the game, after which it is "demoted" to an identical state with all the participating nodes. All mutations require consensus, which is provided all nodes acknowledging that the node triggering a mutation (i.e. playing a turn in the battleship game) holds a valid token and is trying to play a valid turn. Passing the token to the next node also requires acknowledgement from all participants.
 
-The nodes are arranged into a virtual ring, in which a token is rotated. The token holder is allowed to do a single mutation, which is in normal mode either playing a turn or letting others know what effect the previous player's turn had (HIT or MISS) so that the other nodes can record the event. All moves are always done against the next player in the ring, which provides an equal playing ground, preventing e.g. some participants agreeing on destroying a specific opponent first.
+The nodes are arranged into a virtual ring, in which a token is rotated. The token holder is allowed to mutate the distributed state, which is in normal mode either playing a turn or letting others know what effect the previous player's turn had (HIT or MISS) so that the other nodes can record the event. All moves are always done against the next player in the ring, which provides an equal playing ground, preventing e.g. some participants agreeing on destroying a specific opponent first.
 
 The nodes communicate via sockets. All communication is done with JSON messages, which contain the message (a string enum), possibly the token and relevant data for the message, such as the coordinates in case of a PLAY_TURN message.
 
-The nodes can be thought of as finite state machines (elaborate on this).
+**ELABORATE:** The nodes can be thought of as finite state machines that move mostly between states IDLE and PLAY_TURN.
 
 ### Messages
 
-The semantics of the messages are described in the [communication protocols](#).
+The semantics of the messages are described in the communication protocols provided as an appendix.
 
 The messages sent between the programs will be JSON payloads of the following format:
 ```
 {message: "EVENT_NAME" [, data: {}]}
 ```
 
-where `"EVENT_NAME"` will adhere to some command defined in the [communication protocols](#) and `data` is an object holding data relevant to the specific command. The token used for synchronization, consistency and consensus will be added to the `data` object when necessary.
+where `"EVENT_NAME"` will adhere to some command defined in the communication protocols and `data` is an object holding data relevant to the specific command. The token used for synchronization, consistency and consensus will be added to the `data` object when necessary.
 
 ### Game loop (simplified)
 
 The described (simplified) game loop shows our intuition considering how to use the token to guarantee synchronization, consistency and consensus by only allowing the token holder to send commands that mutate the shared state.
 
-For more robust descriptions, see the [communication protocol sequence diagrams](#).
+For more robust descriptions, see the communication protocol sequence diagrams provided as an appendix.
 
 1. Token holder does their move to the next player in the virtual ring
 2. Others validate
