@@ -9,7 +9,6 @@ class Status(Enum):
     UNHANDELED_TIMEOUT = 4
     
 class NetworkResult:
-    # constants:
 
     def __init__(self, status = Status.INVALID, ip="0", port=0, message=json.loads("{}") ):
         if status in Status:
@@ -24,4 +23,3 @@ class NetworkResult:
         self.port = int(port)
         self.message = message
         
-    #def fun(self):

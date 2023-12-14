@@ -69,19 +69,19 @@ class UDPClient:
     def wait_for_responses(self, id_answered_to, n, timeout):
         print("TODO: wait for n answers with given id")
         
-    def listen(self, timeout, HANDLE_TIMEOUT):
+    def listen(self, timeout):
         # author is (ip, port)
-        (status, data, author) = self.__listen(timeout, HANDLE_TIMEOUT)
+        (status, data, author) = self.__listen(timeout)
         return (status, data, author)
         
-    def listen_broadcast(self, timeout, HANDLE_TIMEOUT):
+    def listen_broadcast(self, timeout):
         # author is (ip, port)
-        (status, data, author) = self.__listen_broadcast(timeout, HANDLE_TIMEOUT)
+        (status, data, author) = self.__listen_broadcast(timeout)
         return (status, data, author)
             
-    def listen_multicast(self, timeout, HANDLE_TIMEOUT):
+    def listen_multicast(self, timeout):
         # author is (ip, port)
-        (status, data, author) = self.__listen_multicast(timeout, HANDLE_TIMEOUT)
+        (status, data, author) = self.__listen_multicast(timeout)
         return (status, data, author)
         
     ## Private methods
@@ -120,7 +120,7 @@ class UDPClient:
         finally:
             self.sock_m.settimeout(None)
 
-    def __listen(self, timeout, HANDLE_TIMEOUT):
+    def __listen(self, timeout):
         self.sock.settimeout(timeout)
         
         try:
@@ -128,15 +128,10 @@ class UDPClient:
             self.sock.settimeout(None)
             return (Status.OK, data, addr)
         except socket.timeout:
-            self.sock.settimeout(None) 
+            self.sock.settimeout(None)          
+            return (Status.UNHANDELED_TIMEOUT, "{}", (0, 0))
             
-            if HANDLE_TIMEOUT is None:                    
-                return (Status.UNHANDELED_TIMEOUT, "{}", (0, 0))
-            
-            HANDLE_TIMEOUT()
-            return (Status.HANDELED_ERROR, "{}", (0, 0))
-            
-    def __listen_broadcast(self, timeout, HANDLE_TIMEOUT):
+    def __listen_broadcast(self, timeout):
         self.sock_b.settimeout(timeout)
         
         try:
@@ -149,15 +144,10 @@ class UDPClient:
             
             return (Status.OK, data, addr)
         except socket.timeout:
-            self.sock_b.settimeout(None)
+            self.sock_b.settimeout(None)           
+            return (Status.UNHANDELED_TIMEOUT, "{}", (0, 0))
             
-            if HANDLE_TIMEOUT is None:                    
-                return (Status.UNHANDELED_TIMEOUT, "{}", (0, 0))
-            
-            HANDLE_TIMEOUT()
-            return (Status.HANDELED_ERROR, "{}", (0, 0))
-            
-    def __listen_multicast(self, timeout, HANDLE_TIMEOUT):
+    def __listen_multicast(self, timeout):
         self.sock_m.settimeout(timeout)
         
         try:
@@ -166,9 +156,4 @@ class UDPClient:
             return (Status.OK, data, addr)
         except socket.timeout:
             self.sock_m.settimeout(None) 
-            
-            if HANDLE_TIMEOUT is None:                    
-                return (Status.UNHANDELED_TIMEOUT, "{}", (0, 0))
-            
-            HANDLE_TIMEOUT()
-            return (Status.HANDELED_ERROR, "{}", (0, 0))
+            return (Status.UNHANDELED_TIMEOUT, "{}", (0, 0))

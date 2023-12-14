@@ -6,40 +6,29 @@ from models.NetworkResult import NetworkResult, Status
 class MessagingService:
     def __init__(self, messaging_client):
         self.messaging_client = messaging_client
-        
-    def fun():
-        # just to mock timeout handling
-        pass
     
-    def listen(self, timeout=5.0, HANDLE_TIMEOUT=None):
-        (status, data, (ip, port)) = self.messaging_client.listen(timeout, HANDLE_TIMEOUT)
+    def listen(self, timeout=5.0):
+        (status, data, (ip, port)) = self.messaging_client.listen(timeout)
         message = json.loads(data)
-        
         result = NetworkResult(status, ip, port, message)
-        # print("GOT DIRECT MESSAGE:", result.status, result.ip, result.port, result.message)
         
         return result
     
-    def listen_broadcast(self, timeout=5.0, HANDLE_TIMEOUT=None):
-        (status, data, (ip, port)) = self.messaging_client.listen_broadcast(timeout, HANDLE_TIMEOUT)
+    def listen_broadcast(self, timeout=5.0):
+        (status, data, (ip, port)) = self.messaging_client.listen_broadcast(timeout)
         json_dictonary = json.loads(data)
-        
         result = NetworkResult(status, ip, port, json_dictonary)
-        # print("GOT BRODCAST MESSAGE:", result.status, result.ip, result.port, result.message)
         
         return result
         
-    def listen_multicast(self, timeout=5.0, HANDLE_TIMEOUT=None):
-        (status, data, (ip, port)) = self.messaging_client.listen_multicast(timeout, HANDLE_TIMEOUT)
+    def listen_multicast(self, timeout=5.0):
+        (status, data, (ip, port)) = self.messaging_client.listen_multicast(timeout)
         message = json.loads(data)
-        
         result = NetworkResult(status, ip, port, message)
-        # print("GOT MULTICAST MESSAGE:", result.status, result.ip, result.port, result.message)
         
         return result
         
     def broadcast(self, message):
-        # print("BRODCASTING:", message)
         # TODO: Error handling?
         message = json.dumps(message)
         # TODO: Generate id for the message
@@ -48,14 +37,12 @@ class MessagingService:
         
     def send_to(self, recipient, message):
         (ip, port) = recipient
-        # print("SENDING TO:", ip, message)
-        # Recipients implies tuple with at least (IP, PORT)
+        # Recipients implies tuple (IP, PORT)
         # TODO: Generate id for the message
         message = json.dumps(message)
         self.messaging_client.send_to(recipient, message)
         
     def send_to_many(self, message):
-        # print("MULTICASTING:", message)
         # TODO: Generate id for the message
         message = json.dumps(message)
         self.messaging_client.send_to_many(message)
@@ -68,9 +55,6 @@ class MessagingService:
             time_left = n_sec_timer - time.time()
             result = self.listen_broadcast(time_left)
             
-            if 'message' in result.message:
-                # print("TO LISTEN/RECEIVED", ack_message, result.message['message'])
-                pass
             if result.status == Status.OK and result.message["message"] == ack_message:
                 ackd_players.extend(filter(lambda p: p.ip == result.ip, players))
             elif result.status == Status.UNHANDELED_TIMEOUT:
