@@ -7,15 +7,15 @@ class UDPClient:
     BROADCAST_IP = "255.255.255.255" # absolute
     MULTICAST_GRP = "224.1.1.1" # https://en.wikipedia.org/wiki/Multicast_address
     
-    def __init__(self, IP, PORT, PORTB, PORTM):
-        self.IP = IP
+    def __init__(self, PORT, PORTB, PORTM, IP=None):
         self.PORT = PORT
         self.PORTB = PORTB
         self.PORTM = PORTM
         ## Socket initialization
-        self.sock = socket.socket(socket.AF_INET, # Internet
-            socket.SOCK_DGRAM) # UDP
-        self.sock.bind((IP, PORT))
+        if IP is None:
+            self.direct_socket_initialized = False
+        else:
+            self.init_direct_port(IP)
         
         self.sock_b = socket.socket(socket.AF_INET, # Internet
             socket.SOCK_DGRAM) # UDP
@@ -35,6 +35,25 @@ class UDPClient:
         mreq = struct.pack("4sl", socket.inet_aton(self.MULTICAST_GRP), socket.INADDR_ANY)
         self.sock_m.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
         
+    def init_direct_port(self, own_ip = 0, server_ip = "192.168.1.1"):
+        if own_ip == 0:
+            IP = socket.gethostbyname(socket.gethostname())
+        else:    
+            IP = own_ip
+            
+        if IP.startswith("127.0."):
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            try: s.connect((server_ip, 80))
+            except: pass
+            IP = s.getsockname()[0]
+            s.close()
+        
+        self.IP = IP
+        self.sock = socket.socket(socket.AF_INET, # Internet
+            socket.SOCK_DGRAM) # UDP
+        self.sock.bind((IP, self.PORT))
+        self.direct_socket_initialized = True
+                
     # Public interface, implement by utilizing the private functions
         
     def broadcast(self, message):
@@ -50,19 +69,19 @@ class UDPClient:
     def wait_for_responses(self, id_answered_to, n, timeout):
         print("TODO: wait for n answers with given id")
         
-    def listen(self, timeout, HANDLE_TIMEOUT):
+    def listen(self, timeout):
         # author is (ip, port)
-        (status, data, author) = self.__listen(timeout, HANDLE_TIMEOUT)
+        (status, data, author) = self.__listen(timeout)
         return (status, data, author)
         
-    def listen_broadcast(self, timeout, HANDLE_TIMEOUT):
+    def listen_broadcast(self, timeout):
         # author is (ip, port)
-        (status, data, author) = self.__listen_broadcast(timeout, HANDLE_TIMEOUT)
+        (status, data, author) = self.__listen_broadcast(timeout)
         return (status, data, author)
             
-    def listen_multicast(self, timeout, HANDLE_TIMEOUT):
+    def listen_multicast(self, timeout):
         # author is (ip, port)
-        (status, data, author) = self.__listen_multicast(timeout, HANDLE_TIMEOUT)
+        (status, data, author) = self.__listen_multicast(timeout)
         return (status, data, author)
         
     ## Private methods
@@ -79,9 +98,13 @@ class UDPClient:
                 
         try:
             self.sock_b.settimeout(1.0)
-            self.sock_b.recvfrom(1024) # catch own broadcast
-        except TimeoutError:
-            print("This is imposible!")
+            data, addr = self.sock_b.recvfrom(1024) # catch own broadcast
+            ip, port = addr
+            
+            if not self.direct_socket_initialized:
+                self.init_direct_port(ip)
+        except socket.timeout:
+            print("Your broadcast is configured wrong")
         finally:
             self.sock_b.settimeout(None)
         
@@ -92,42 +115,45 @@ class UDPClient:
         try:
             self.sock_m.settimeout(1.0)
             self.sock_m.recvfrom(1024) # catch own multicast
-        except TimeoutError:
-            print("This is imposible!")
+        except socket.timeout:
+            print("Your multicast is configured wrong")
         finally:
             self.sock_m.settimeout(None)
 
-    def __listen(self, timeout, HANDLE_TIMEOUT):
+    def __listen(self, timeout):
         self.sock.settimeout(timeout)
         
         try:
             data, addr = self.sock.recvfrom(1024)
             self.sock.settimeout(None)
             return (Status.OK, data, addr)
-        except TimeoutError:
-            self.sock.settimeout(None) 
-            HANDLE_TIMEOUT()
-            return (Status.HANDELED_ERROR, "{}", (0, 0))
+        except socket.timeout:
+            self.sock.settimeout(None)          
+            return (Status.UNHANDELED_TIMEOUT, "{}", (0, 0))
             
-    def __listen_broadcast(self, timeout, HANDLE_TIMEOUT):
+    def __listen_broadcast(self, timeout):
         self.sock_b.settimeout(timeout)
         
         try:
             data, addr = self.sock_b.recvfrom(1024)
             self.sock_b.settimeout(None)
+            ip, port = addr
+            
+            if not self.direct_socket_initialized:
+                self.init_direct_port(0, ip)
+            
             return (Status.OK, data, addr)
-        except TimeoutError:
-            self.sock_b.settimeout(None) 
-            HANDLE_TIMEOUT()
-            return (Status.HANDELED_ERROR, "{}", (0, 0))
-    def __listen_multicast(self, timeout, HANDLE_TIMEOUT):
+        except socket.timeout:
+            self.sock_b.settimeout(None)           
+            return (Status.UNHANDELED_TIMEOUT, "{}", (0, 0))
+            
+    def __listen_multicast(self, timeout):
         self.sock_m.settimeout(timeout)
         
         try:
             data, addr = self.sock_m.recvfrom(1024)
             self.sock_m.settimeout(None) 
             return (Status.OK, data, addr)
-        except TimeoutError:
+        except socket.timeout:
             self.sock_m.settimeout(None) 
-            HANDLE_TIMEOUT()
-            return (Status.HANDELED_ERROR, "{}", (0, 0))
+            return (Status.UNHANDELED_TIMEOUT, "{}", (0, 0))
