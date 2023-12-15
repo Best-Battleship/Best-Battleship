@@ -91,7 +91,7 @@ The application has no hard limits on the number of players as the ring can theo
 
 **PROMPT**: *"How do you quantify the performance of the system and what did you do (can do) to improve the performance of the system (for instance reduce the latency or improve the throughput)?"*
 
-**MAYBE SKIP THIS?**
+To reduce the affect on network, we use multicast messages instead of broadcasts after the game starts. Message acknowledgement is sent with a direct UDP message. UDP protocol is also chosen to reduce ports usage on nodes and message amount in the network.
 
 ## The key enablers and the lessons learned during the development of the project.
 
@@ -101,7 +101,9 @@ One key learning is that it is imperative to think on the architecture / interfa
 
 It is also not trivial to come up with mechanisms that provide the desired properties in a distributed system like this, such as node discovery or consensus.
 
-Threading?
+Practiced UDP sockets, multicast and broadcast in real application. It was an interestin experience to develop and implement protocols. Learned message loose problems related to UDP protocol and recovery mechanisms.
+
+Learned how to develop distributed systems and how to think about one system running on many computers and iteract with others. Got a better understanding of consistency and consensus in practice.
 
 Should have maybe used a library for socket/UDP stuff?
 
