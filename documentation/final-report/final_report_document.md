@@ -4,16 +4,16 @@
 
 ## Table of Contents
 
-- [The project's goal and core functionality](#the-projects-goal-and-core-functionality)
-- [Design Principles](#design-principles)
+- [1. The project's goal and core functionality](#1-the-projects-goal-and-core-functionality)
+- [2. Design Principles](#2-design-principles)
     - [Messages](#messages)
     - [Game loop (simplified)](#game-loop-simplified)
-- [Distribution and properties](#distribution-and-properties)
-- [Scaling](#scaling)
-- [Performance](#performance)
-- [Lessons learned](#lessons-learned)
-- [Notes](#notes)
-- [Appendix](#appendix)
+- [3. Distribution and properties](#3-distribution-and-properties)
+- [4. Scaling](#4-scaling)
+- [5. Performance](#5-performance)
+- [6. Lessons learned](#6-lessons-learned)
+- [7. Notes](#7-notes)
+- [8. Appendix](#8-appendix)
 
 ## Team members
 
@@ -22,7 +22,7 @@
 - Jonne Kanerva 
 - Guanghan Wu
 
-## The project's goal and core functionality
+## 1. The project's goal and core functionality
 
 The topic of the group project is a [Battleship game](https://en.wikipedia.org/wiki/Battleship_(game)) for any number of players. The players are arranged into a virtual ring where they always have do attack the next player in the ring. A token is used to specify the current player and is also used as the main mechanism for synchronization, consistency and consensus. The game uses the standard rules described in the Wikipedia article linked at the start of this paragraph.
 
@@ -30,7 +30,7 @@ The game is built as a Python program that can be run on arbitrary number of nod
 
 The idea of having a virtual ring and a token could be used to implement any turn-based game that can be played in such a ring. Battleship provides a fairly even playing ground, but something like chess could be implemented as well.
 
-## Design Principles
+## 2. Design Principles
 
 The main design principle is that we wanted every node to be identical in terms of functionality, which lead us to a peer-to-peer architecture. Each node can initiate a game and each node can join a game. The initiating node serves a special purpose only when initiating the game, after which it is in an identical state with all the participating nodes for the remainder of the operation. All mutations require consensus, which is provided all nodes acknowledging that the node triggering a mutation (i.e. playing a turn in the battleship game) holds a valid token and is trying to play a valid turn. Passing the token to the next node also requires acknowledgement from all participants.
 
@@ -65,7 +65,7 @@ For more robust descriptions, see the communication protocol sequence diagrams p
 6. Others validate
 7. Move to step 1
 
-## Distribution and properties
+## 3. Distribution and properties
 
 The game has its state distributed among the participating players and the main mechanism for synchronization, consistency and consensus is a token that grants the right to play a turn and send messages that mutate the state of other players.
 
@@ -84,15 +84,15 @@ Participating players are distributed into a virtual ring, with the token being 
 - **Consensus** provided by the property that only the token holder is allowed to make mutations to the shared distributed state, all moves are also acknowledged by all nodes
 - **Fault tolerance** provided by dropping a player from the ring after an election if they do not answer in a timely manner, letting the others continue operation as usual
 
-## Scaling
+## 4. Scaling
 
 The application has no hard limits on the number of players as the ring can theoretically hold any number of players, but realistically the number of players is restricted to the size of the local network of the initializing node, as node discovery is done by broadcasting within the local network.
 
-## Performance
+## 5. Performance
 
 To reduce the affect on network, we use multicast messages instead of broadcasts after the game starts. Message acknowledgement is sent with a direct UDP message. UDP protocol is also chosen to reduce ports usage on nodes and message amount in the network.
 
-## Lessons learned
+## 6. Lessons learned
 
 One key learning is that it is imperative to think on the architecture / interface lavel especially when working asynchronously as splitting the work can be difficult if the code organization does not support that.
 
@@ -104,13 +104,13 @@ Learned how to develop distributed systems and how to think about one system run
 
 Should have maybe used a library for socket/UDP stuff?
 
-## Notes
+## 7. Notes
 
 We agree to divide the points equally.
 
 \pagebreak
 
-## Appendix
+## 8. Appendix
 
 ### Appendix A Communication sequence diagrams
 
