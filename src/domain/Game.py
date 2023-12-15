@@ -1,5 +1,4 @@
 import time
-import json
 import threading
 
 from utils.board import *
@@ -111,8 +110,8 @@ class Game:
             self.wait_for_turn()
 
     def start_game(self):
-        self.generate_own_board();
-        self.generate_board_for_players();
+        self.generate_own_board()
+        self.generate_board_for_players()
 
         # Initiator or host will start the game
         if self.myself.number == 0:
@@ -399,7 +398,7 @@ class Game:
                         print("You are not in player list!")
                     
                 elif result.status == Status.OK and result.message['message'] == "TIOMEOUT":
-                    HANDLE_RECEIVED_TIMEOUT(result) # missed START_GAME
+                    self.HANDLE_RECEIVED_TIMEOUT(result)
                 else:
                     # Implement handling for non-happy paths
                     pass

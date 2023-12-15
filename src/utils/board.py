@@ -19,11 +19,6 @@ def apply_shot(board, y, x):
 def mark_shot(board, y, x, status):
     board[y][x] = status
 
-    
-def already_shot(board, y, x):
-    return board[y][x] == HIT or board[y][x] == MISS
-
-
 def all_ships_shot(board):
     return all(SHIP not in row for row in board)
 
