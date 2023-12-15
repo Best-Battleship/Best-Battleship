@@ -4,6 +4,17 @@
 
 ## Table of Contents
 
+- [The project's goal and core functionality](#the-projects-goal-and-core-functionality)
+- [Design Principles](#design-principles)
+    - [Messages](#messages)
+    - [Game loop (simplified)](#game-loop-simplified)
+- [Distribution and properties](#distribution-and-properties)
+- [Scaling](#scaling)
+- [Performance](#performance)
+- [Lessons learned](#lessons-learned)
+- [Notes](#notes)
+- [Appendix](#appendix)
+
 ## Team members
 
 - Oleg Tervo-Ridor
@@ -13,8 +24,6 @@
 
 ## The project's goal and core functionality
 
-**PROMPT:** *"The project’s goal(s) and core functionality. Identifying the applications / services that can build on your project."*
-
 The topic of the group project is a [Battleship game](https://en.wikipedia.org/wiki/Battleship_(game)) for any number of players. The players are arranged into a virtual ring where they always have do attack the next player in the ring. A token is used to specify the current player and is also used as the main mechanism for synchronization, consistency and consensus. The game uses the standard rules described in the Wikipedia article linked at the start of this paragraph.
 
 The game is built as a Python program that can be run on arbitrary number of nodes that then communicate with each other. Node discovery is done by one of the nodes by broadcasting a game initialization message, which is then replied to by nodes that want to join that particular game. After a set amount of time, the initiating node starts the game and sends the relevant data (tuples (id, ip, port)) to all the participating nodes. After that the nodes start playing the game by following the protocols described in the appendix. Token holder is always known and both the token and the move are validated by all nodes, which provides synchronization, consistency and consensus to the system.
@@ -22,8 +31,6 @@ The game is built as a Python program that can be run on arbitrary number of nod
 The idea of having a virtual ring and a token could be used to implement any turn-based game that can be played in such a ring. Battleship provides a fairly even playing ground, but something like chess could be implemented as well.
 
 ## Design Principles
-
-**PROMPT:** *"The design principles (architecture, process, communication) techniques."*
 
 The main design principle is that we wanted every node to be identical in terms of functionality, which lead us to a peer-to-peer architecture. Each node can initiate a game and each node can join a game. The initiating node serves a special purpose only when initiating the game, after which it is in an identical state with all the participating nodes for the remainder of the operation. All mutations require consensus, which is provided all nodes acknowledging that the node triggering a mutation (i.e. playing a turn in the battleship game) holds a valid token and is trying to play a valid turn. Passing the token to the next node also requires acknowledgement from all participants.
 
@@ -60,10 +67,6 @@ For more robust descriptions, see the communication protocol sequence diagrams p
 
 ## Distribution and properties
 
-**PROMPT**: *"What functionalities does your system provide? For instance, naming and node discovery,
-consistency and synchronization, fault tolerance and recovery, etc? For instance, fault tolerance
-and consensus when a node goes down."*
-
 The game has its state distributed among the participating players and the main mechanism for synchronization, consistency and consensus is a token that grants the right to play a turn and send messages that mutate the state of other players.
 
 Participating players are distributed into a virtual ring, with the token being passed to the next player after playing a turn. When playing a turn, all participating players validate that the correct token was used. If a player times out for any command, an election is started and if the player does not participate the election, they're dropped from the virtual ring and cannot join the game anymore. The player that was attacking the dropped node will then be attacking the dropped node's target on their next turn.
@@ -83,19 +86,13 @@ Participating players are distributed into a virtual ring, with the token being 
 
 ## Scaling
 
-**PROMPT**: *"How do you show that your system can scale to support the increased number of nodes?"*
-
 The application has no hard limits on the number of players as the ring can theoretically hold any number of players, but realistically the number of players is restricted to the size of the local network of the initializing node, as node discovery is done by broadcasting within the local network.
 
 ## Performance
 
-**PROMPT**: *"How do you quantify the performance of the system and what did you do (can do) to improve the performance of the system (for instance reduce the latency or improve the throughput)?"*
-
 To reduce the affect on network, we use multicast messages instead of broadcasts after the game starts. Message acknowledgement is sent with a direct UDP message. UDP protocol is also chosen to reduce ports usage on nodes and message amount in the network.
 
-## The key enablers and the lessons learned during the development of the project.
-
-**PROMPT**: *"The key enablers and the lessons learned during the development of the project."*
+## Lessons learned
 
 One key learning is that it is imperative to think on the architecture / interface lavel especially when working asynchronously as splitting the work can be difficult if the code organization does not support that.
 
@@ -107,13 +104,15 @@ Learned how to develop distributed systems and how to think about one system run
 
 Should have maybe used a library for socket/UDP stuff?
 
-## Notes about the group member and their participation, work task division, etc.
+## Notes
 
-**PROMPT**: *"Here you also may report, if you feel that the points collected to group should be split unevenly among group members. Use percentages when descripting this balancing view point."*
+We agree to divide the points equally.
 
 \pagebreak
 
-## Appendix A Communication sequence diagrams
+## Appendix
+
+### Appendix A Communication sequence diagrams
 
 ![Game initialization](../protocols/1-Start.jpg)
 
